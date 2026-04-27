@@ -30,6 +30,7 @@ type DailyLog = {
   id: string
   date: string
   weightKg: string
+  waistSizeCm: string
   sleepHours: string
   workoutType: WorkoutType
   gymTime: string
@@ -56,6 +57,7 @@ type DailyLogRow = {
   user_id: string
   log_date: string
   weight_kg: number | string | null
+  waist_size_cm: number | string | null
   sleep_hours: number | string | null
   workout_type: string | null
   gym_time: string | null
@@ -167,6 +169,7 @@ function createEmptyLog(date = toInputDate(new Date())): DailyLog {
     id: makeId(),
     date,
     weightKg: '',
+    waistSizeCm: '',
     sleepHours: '',
     workoutType: 'Upper',
     gymTime: '',
@@ -230,8 +233,15 @@ function loadLogs(): DailyLog[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    const parsed = JSON.parse(raw) as DailyLog[]
-    return Array.isArray(parsed) ? parsed : []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((item) => {
+      try {
+        return normaliseImportedLog(item)
+      } catch {
+        return null
+      }
+    }).filter((log): log is DailyLog => log !== null)
   } catch {
     return []
   }
@@ -301,6 +311,7 @@ function mapCloudRowsToLogs(dailyRows: DailyLogRow[], exerciseRows: ExerciseRow[
       id: row.id,
       date: row.log_date,
       weightKg: row.weight_kg === null ? '' : String(row.weight_kg),
+      waistSizeCm: row.waist_size_cm === null ? '' : String(row.waist_size_cm),
       sleepHours: row.sleep_hours === null ? '' : String(row.sleep_hours),
       workoutType: normaliseWorkoutType(row.workout_type),
       gymTime: row.gym_time ?? '',
@@ -353,6 +364,7 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
     user_id: userId,
     log_date: log.date,
     weight_kg: toNullableNumber(log.weightKg),
+    waist_size_cm: toNullableNumber(log.waistSizeCm),
     sleep_hours: toNullableNumber(log.sleepHours),
     workout_type: log.workoutType,
     gym_time: emptyToNull(log.gymTime),
@@ -421,6 +433,69 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
     id: cloudLogId,
     createdAt: (savedRow as DailyLogRow).created_at,
     updatedAt: (savedRow as DailyLogRow).updated_at,
+  }
+}
+
+
+function normaliseImportedLog(item: unknown): DailyLog {
+  if (!item || typeof item !== 'object') {
+    throw new Error('Import failed: every item must be an object.')
+  }
+
+  const source = item as Partial<DailyLog> & Record<string, unknown>
+  const date = typeof source.date === 'string' ? source.date : ''
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error('Import failed: every log needs a date in YYYY-MM-DD format.')
+  }
+
+  const base = createEmptyLog(date)
+  const exercises = Array.isArray(source.exercises)
+    ? source.exercises.map((exercise) => {
+        const entry = exercise as Partial<ExerciseEntry>
+        return {
+          id: typeof entry.id === 'string' ? entry.id : makeId(),
+          name: typeof entry.name === 'string' ? entry.name : '',
+          weight: typeof entry.weight === 'string' ? entry.weight : '',
+          unit: normaliseExerciseUnit(typeof entry.unit === 'string' ? entry.unit : null),
+          sets: typeof entry.sets === 'string' ? entry.sets : '',
+          reps: typeof entry.reps === 'string' ? entry.reps : '',
+          completedSets: typeof entry.completedSets === 'number' ? entry.completedSets : 0,
+        }
+      })
+    : []
+
+  const meals = Array.isArray(source.meals)
+    ? source.meals.map((meal) => {
+        const entry = meal as Partial<MealEntry>
+        return {
+          id: typeof entry.id === 'string' ? entry.id : makeId(),
+          label: normaliseMealLabel(typeof entry.label === 'string' ? entry.label : 'Other'),
+          description: typeof entry.description === 'string' ? entry.description : '',
+          proteinScore: typeof entry.proteinScore === 'number'
+            ? (Math.min(Math.max(entry.proteinScore, 0), 3) as MealEntry['proteinScore'])
+            : 1,
+        }
+      })
+    : []
+
+  return {
+    ...base,
+    id: typeof source.id === 'string' ? source.id : base.id,
+    weightKg: typeof source.weightKg === 'string' ? source.weightKg : source.weightKg == null ? '' : String(source.weightKg),
+    waistSizeCm: typeof source.waistSizeCm === 'string' ? source.waistSizeCm : source.waistSizeCm == null ? '' : String(source.waistSizeCm),
+    sleepHours: typeof source.sleepHours === 'string' ? source.sleepHours : source.sleepHours == null ? '' : String(source.sleepHours),
+    workoutType: normaliseWorkoutType(typeof source.workoutType === 'string' ? source.workoutType : null),
+    gymTime: typeof source.gymTime === 'string' ? source.gymTime : '',
+    preWorkout: typeof source.preWorkout === 'string' ? source.preWorkout : '',
+    postGymEnergy: typeof source.postGymEnergy === 'string' ? source.postGymEnergy : source.postGymEnergy == null ? '' : String(source.postGymEnergy),
+    treadmillDistanceKm: typeof source.treadmillDistanceKm === 'string' ? source.treadmillDistanceKm : source.treadmillDistanceKm == null ? '' : String(source.treadmillDistanceKm),
+    treadmillMinutes: typeof source.treadmillMinutes === 'string' ? source.treadmillMinutes : source.treadmillMinutes == null ? '' : String(source.treadmillMinutes),
+    treadmillIncline: typeof source.treadmillIncline === 'string' ? source.treadmillIncline : source.treadmillIncline == null ? '' : String(source.treadmillIncline),
+    notes: typeof source.notes === 'string' ? source.notes : '',
+    exercises,
+    meals,
+    createdAt: typeof source.createdAt === 'string' ? source.createdAt : base.createdAt,
+    updatedAt: new Date().toISOString(),
   }
 }
 
@@ -554,6 +629,36 @@ function App() {
       setSyncState('error')
       setSyncError(error instanceof Error ? error.message : 'Could not sync local logs.')
     }
+  }
+
+  async function importLogsFromJson(raw: string) {
+    let parsed: unknown
+
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      throw new Error('Import failed: this is not valid JSON.')
+    }
+
+    const items = Array.isArray(parsed) ? parsed : [parsed]
+    if (!items.length) throw new Error('Import failed: the JSON array is empty.')
+
+    const normalised = items.map(normaliseImportedLog)
+
+    if (cloudMode && user) {
+      setSyncState('syncing')
+      const synced: DailyLog[] = []
+      for (const log of normalised) {
+        synced.push(await saveLogToCloud(log, user.id))
+      }
+      setLogs((current) => sortLogs([...synced, ...current.filter((existing) => !synced.some((log) => log.date === existing.date))]))
+      setSyncState('synced')
+    } else {
+      setLogs((current) => sortLogs([...normalised, ...current.filter((existing) => !normalised.some((log) => log.date === existing.date))]))
+      setSyncState('local')
+    }
+
+    return normalised.length
   }
 
   async function signOut() {
@@ -730,7 +835,15 @@ function App() {
           />
         )}
 
-        {activeTab === 'trends' && <TrendsView logs={logs} stats={stats} />}
+        {activeTab === 'trends' && (
+          <TrendsView
+            logs={logs}
+            stats={stats}
+            importLogsFromJson={importLogsFromJson}
+            setActiveDate={setActiveDate}
+            setActiveTab={setActiveTab}
+          />
+        )}
 
         {activeTab === 'coach' && (
           <CoachView
@@ -965,6 +1078,7 @@ function TodayView({
 }) {
   const metrics: Metric[] = [
     { label: 'Today', value: draft.weightKg ? `${draft.weightKg} kg` : 'No weigh-in', detail: 'Log first, judge trend later' },
+    { label: 'Waist', value: draft.waistSizeCm ? `${draft.waistSizeCm} cm` : 'Optional', detail: 'Useful when weight stalls' },
     { label: '7-day avg', value: formatKg(stats.sevenDayAverage), detail: stats.weightDeltaText },
     { label: 'Gym streak', value: `${stats.trainingDaysLast7}/7`, detail: 'Days with training logged' },
     { label: 'Post-gym energy', value: draft.postGymEnergy ? `${draft.postGymEnergy}/10` : '—', detail: 'Fatigue signal, not decoration' },
@@ -1013,6 +1127,15 @@ function TodayView({
               placeholder="92.0"
               value={draft.weightKg}
               onChange={(event) => updateDraft('weightKg', event.target.value)}
+            />
+          </label>
+          <label>
+            Waist size cm
+            <input
+              inputMode="decimal"
+              placeholder="Optional"
+              value={draft.waistSizeCm}
+              onChange={(event) => updateDraft('waistSizeCm', event.target.value)}
             />
           </label>
           <label>
@@ -1295,8 +1418,39 @@ function NutritionView({
   )
 }
 
-function TrendsView({ logs, stats }: { logs: DailyLog[]; stats: ReturnType<typeof buildStats> }) {
+function TrendsView({
+  logs,
+  stats,
+  importLogsFromJson,
+  setActiveDate,
+  setActiveTab,
+}: {
+  logs: DailyLog[]
+  stats: ReturnType<typeof buildStats>
+  importLogsFromJson: (raw: string) => Promise<number>
+  setActiveDate: (date: string) => void
+  setActiveTab: (tab: Tab) => void
+}) {
   const sorted = sortLogs(logs)
+  const [importText, setImportText] = useState('')
+  const [importMessage, setImportMessage] = useState('')
+  const latestWaist = sorted.find((log) => log.waistSizeCm)?.waistSizeCm ?? ''
+
+  async function handleImport() {
+    try {
+      setImportMessage('Importing…')
+      const count = await importLogsFromJson(importText)
+      setImportText('')
+      setImportMessage(`Imported ${count} log${count === 1 ? '' : 's'}.`)
+    } catch (error) {
+      setImportMessage(error instanceof Error ? error.message : 'Import failed.')
+    }
+  }
+
+  function editLog(date: string) {
+    setActiveDate(date)
+    setActiveTab('today')
+  }
 
   return (
     <div className="view-grid">
@@ -1318,6 +1472,10 @@ function TrendsView({ logs, stats }: { logs: DailyLog[]; stats: ReturnType<typeo
             <strong>{formatKg(stats.fourteenDayAverage)}</strong>
           </div>
           <div>
+            <span>Latest waist</span>
+            <strong>{latestWaist ? `${latestWaist} cm` : '—'}</strong>
+          </div>
+          <div>
             <span>Cardio last 7</span>
             <strong>{stats.cardioMinutesLast7} min</strong>
           </div>
@@ -1325,6 +1483,47 @@ function TrendsView({ logs, stats }: { logs: DailyLog[]; stats: ReturnType<typeo
             <span>Avg energy</span>
             <strong>{stats.averageEnergy === null ? '—' : `${stats.averageEnergy.toFixed(1)}/10`}</strong>
           </div>
+        </div>
+      </section>
+
+      <section className="panel span-2 form-panel">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Backfill</p>
+            <h3>Import old logs</h3>
+          </div>
+        </div>
+        <p className="helper-copy">
+          Paste a JSON array of logs. Date is the only required field because it identifies the day; every fitness field can be blank.
+        </p>
+        <textarea
+          className="import-box"
+          placeholder={`[
+  {
+    "date": "2026-04-08",
+    "weightKg": "92",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "10:15-11:45",
+    "preWorkout": "2 bananas + latte",
+    "postGymEnergy": "3",
+    "treadmillDistanceKm": "1.00",
+    "treadmillMinutes": "11:58",
+    "treadmillIncline": "6.0",
+    "notes": "Felt tired after gym",
+    "exercises": [],
+    "meals": []
+  }
+]`}
+          value={importText}
+          onChange={(event) => setImportText(event.target.value)}
+        />
+        <div className="import-actions">
+          <button className="primary-button" type="button" onClick={handleImport} disabled={!importText.trim()}>
+            Import logs
+          </button>
+          {importMessage && <span>{importMessage}</span>}
         </div>
       </section>
 
@@ -1338,7 +1537,7 @@ function TrendsView({ logs, stats }: { logs: DailyLog[]; stats: ReturnType<typeo
 
         <div className="history-list">
           {sorted.length === 0 && <div className="empty-state">No saved logs yet. Save today’s entry first.</div>}
-          {sorted.slice(0, 14).map((log) => (
+          {sorted.slice(0, 30).map((log) => (
             <article className="history-row" key={log.id}>
               <div>
                 <strong>{new Date(`${log.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</strong>
@@ -1346,8 +1545,11 @@ function TrendsView({ logs, stats }: { logs: DailyLog[]; stats: ReturnType<typeo
               </div>
               <div>
                 <strong>{log.weightKg ? `${log.weightKg} kg` : '—'}</strong>
-                <span>Energy {log.postGymEnergy || '—'}/10</span>
+                <span>Waist {log.waistSizeCm || '—'} cm · Energy {log.postGymEnergy || '—'}/10</span>
               </div>
+              <button className="ghost-button compact-button" type="button" onClick={() => editLog(log.date)}>
+                Edit
+              </button>
             </article>
           ))}
         </div>
@@ -1458,6 +1660,7 @@ function buildCoachPrompt(draft: DailyLog, logs: DailyLog[], question: string) {
   const recentLogs = sortLogs(logs).slice(0, 14).map((log) => ({
     date: log.date,
     weightKg: log.weightKg || null,
+    waistSizeCm: log.waistSizeCm || null,
     workoutType: log.workoutType,
     treadmillMinutes: log.treadmillMinutes || null,
     postGymEnergy: log.postGymEnergy || null,

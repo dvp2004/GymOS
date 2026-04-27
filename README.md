@@ -4,18 +4,18 @@ Personal gym, nutrition, body-weight tracking and AI feedback PWA.
 
 ## Current build status
 
-Version 2 adds the foundation that actually matters: data sync.
+Version 3 adds editable history, waist tracking, old-log import, and Supabase sync.
 
 - Modern mobile-first React/Vite interface
-- Daily weight, sleep, workout and food logging
+- Daily weight, optional waist size, sleep, workout and food logging
 - Exercise set tracker
 - Treadmill/cardio logging
 - Recent trend cards
 - Coach prompt builder
-- JSON export
+- JSON export and JSON import/backfill
 - Local browser fallback
 - Supabase Auth
-- Supabase Postgres sync
+- Supabase Postgres sync under the signed-in user
 - Row Level Security schema
 - PWA manifest and service worker
 
@@ -52,13 +52,54 @@ VITE_SUPABASE_ANON_KEY=your-public-anon-key
 npm run dev
 ```
 
+## Where data is stored
+
+GymOS currently stores data in two places:
+
+1. Supabase Postgres when you are signed in.
+   - `daily_logs`: one row per date, including weight, optional waist size, sleep, energy, treadmill and notes.
+   - `exercise_entries`: exercises linked to a daily log.
+   - `meal_entries`: meals linked to a daily log.
+   - `ai_feedback`: reserved for future AI responses.
+2. Browser `localStorage` as a fallback/cache and for local-only mode.
+
+Row Level Security policies in `supabase/schema.sql` restrict rows to the authenticated user.
+
 ## How sync works
 
 - If `.env` is missing, GymOS runs in local-only mode.
 - If Supabase is configured, GymOS shows a login screen.
 - After login, logs are loaded from Supabase.
 - Saving a log writes to Supabase and local browser storage.
+- To edit a saved log, open Trends → Recent logs → Edit, change the fields, then Save log again.
+- Saving the same date updates that date instead of creating a duplicate.
 - The app keeps JSON export as a manual backup.
+
+## Importing old logs
+
+Open Trends → Import old logs and paste a JSON array. `date` is the only required field because the app needs a day to attach the log to. Every fitness field can be blank.
+
+Example:
+
+```json
+[
+  {
+    "date": "2026-04-08",
+    "weightKg": "92",
+    "waistSizeCm": "",
+    "workoutType": "Upper",
+    "gymTime": "10:15-11:45",
+    "preWorkout": "2 bananas + latte",
+    "postGymEnergy": "3",
+    "treadmillDistanceKm": "1.00",
+    "treadmillMinutes": "11:58",
+    "treadmillIncline": "6.0",
+    "notes": "Felt tired after gym",
+    "exercises": [],
+    "meals": []
+  }
+]
+```
 
 ## Next roadmap
 

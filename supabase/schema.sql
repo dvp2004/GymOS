@@ -1,4 +1,4 @@
--- GymOS Supabase schema v2.
+-- GymOS Supabase schema v3.
 -- Run the whole file in Supabase SQL Editor.
 -- It creates private per-user tables with Row Level Security.
 
@@ -9,6 +9,7 @@ create table if not exists public.daily_logs (
   user_id uuid not null references auth.users(id) on delete cascade,
   log_date date not null,
   weight_kg numeric(5,2),
+  waist_size_cm numeric(5,2),
   sleep_hours numeric(4,2),
   workout_type text not null default 'Custom',
   gym_time text,
@@ -22,6 +23,9 @@ create table if not exists public.daily_logs (
   updated_at timestamptz not null default now(),
   unique (user_id, log_date)
 );
+
+alter table public.daily_logs
+add column if not exists waist_size_cm numeric(5,2);
 
 create table if not exists public.exercise_entries (
   id uuid primary key default gen_random_uuid(),

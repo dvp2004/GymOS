@@ -411,7 +411,7 @@ label {
 }
 
 .form-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .template-row {
@@ -513,7 +513,7 @@ label {
 
 .trend-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -536,8 +536,9 @@ label {
 }
 
 .history-row {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
   gap: 14px;
   padding: 16px;
 }
@@ -588,6 +589,37 @@ label {
   border: 1px dashed var(--line-strong);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.helper-copy {
+  margin: -6px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.import-box {
+  min-height: 260px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.import-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.import-actions span {
+  color: var(--muted-strong);
+  font-weight: 750;
+}
+
+.compact-button {
+  min-height: 36px;
+  padding-inline: 14px;
+  align-self: center;
 }
 
 @media (max-width: 980px) {
