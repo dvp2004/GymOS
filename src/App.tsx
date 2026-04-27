@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
+import type { Session, User } from '@supabase/supabase-js'
+import { isSupabaseConfigured, supabase } from './lib/supabase'
 import './App.css'
 
 type Tab = 'today' | 'workout' | 'nutrition' | 'trends' | 'coach'
 type WorkoutType = 'Upper' | 'Lower' | 'Cardio' | 'Recovery' | 'Rest' | 'Custom'
+type SyncState = 'local' | 'checking' | 'syncing' | 'synced' | 'error'
+type AuthMode = 'sign-in' | 'sign-up'
 
 type ExerciseEntry = {
   id: string
@@ -44,6 +49,45 @@ type Metric = {
   label: string
   value: string
   detail: string
+}
+
+type DailyLogRow = {
+  id: string
+  user_id: string
+  log_date: string
+  weight_kg: number | string | null
+  sleep_hours: number | string | null
+  workout_type: string | null
+  gym_time: string | null
+  pre_workout: string | null
+  post_gym_energy: number | null
+  treadmill_distance_km: number | string | null
+  treadmill_minutes: number | string | null
+  treadmill_incline: number | string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+type ExerciseRow = {
+  id: string
+  daily_log_id: string
+  exercise_name: string
+  weight: string | null
+  unit: ExerciseEntry['unit'] | string | null
+  sets: string | null
+  reps: string | null
+  completed_sets: number | null
+  position: number
+}
+
+type MealRow = {
+  id: string
+  daily_log_id: string
+  label: MealEntry['label'] | string
+  description: string | null
+  protein_score: number | null
+  position: number
 }
 
 const STORAGE_KEY = 'gymos.logs.v1'
@@ -149,6 +193,39 @@ function safeNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function toNullableNumber(value: string) {
+  const parsed = safeNumber(value)
+  return parsed === null ? null : parsed
+}
+
+function toNullableInteger(value: string) {
+  const parsed = safeNumber(value)
+  if (parsed === null) return null
+  return Math.round(parsed)
+}
+
+function emptyToNull(value: string) {
+  const trimmed = value.trim()
+  return trimmed.length ? trimmed : null
+}
+
+function parseDurationToMinutes(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  if (trimmed.includes(':')) {
+    const [minutesRaw, secondsRaw = '0'] = trimmed.split(':')
+    const minutes = Number(minutesRaw)
+    const seconds = Number(secondsRaw)
+    if (Number.isFinite(minutes) && Number.isFinite(seconds)) {
+      return minutes + seconds / 60
+    }
+  }
+
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 function loadLogs(): DailyLog[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -180,6 +257,173 @@ function getWeightValues(logs: DailyLog[]) {
     .filter((entry): entry is { date: string; value: number } => entry.value !== null)
 }
 
+function normaliseWorkoutType(value: string | null): WorkoutType {
+  const allowed: WorkoutType[] = ['Upper', 'Lower', 'Cardio', 'Recovery', 'Rest', 'Custom']
+  return allowed.includes(value as WorkoutType) ? (value as WorkoutType) : 'Custom'
+}
+
+function normaliseExerciseUnit(value: string | null): ExerciseEntry['unit'] {
+  if (value === 'kg' || value === 'bodyweight') return value
+  return 'lbs'
+}
+
+function normaliseMealLabel(value: string): MealEntry['label'] {
+  const allowed: MealEntry['label'][] = ['Pre-workout', 'Breakfast', 'Lunch', 'Snack', 'Dinner', 'Other']
+  return allowed.includes(value as MealEntry['label']) ? (value as MealEntry['label']) : 'Other'
+}
+
+function mapCloudRowsToLogs(dailyRows: DailyLogRow[], exerciseRows: ExerciseRow[], mealRows: MealRow[]) {
+  return dailyRows.map((row) => {
+    const exercises = exerciseRows
+      .filter((exercise) => exercise.daily_log_id === row.id)
+      .sort((a, b) => a.position - b.position)
+      .map((exercise) => ({
+        id: exercise.id,
+        name: exercise.exercise_name,
+        weight: exercise.weight ?? '',
+        unit: normaliseExerciseUnit(exercise.unit),
+        sets: exercise.sets ?? '',
+        reps: exercise.reps ?? '',
+        completedSets: exercise.completed_sets ?? 0,
+      }))
+
+    const meals = mealRows
+      .filter((meal) => meal.daily_log_id === row.id)
+      .sort((a, b) => a.position - b.position)
+      .map((meal) => ({
+        id: meal.id,
+        label: normaliseMealLabel(meal.label),
+        description: meal.description ?? '',
+        proteinScore: Math.min(Math.max(meal.protein_score ?? 1, 0), 3) as MealEntry['proteinScore'],
+      }))
+
+    return {
+      id: row.id,
+      date: row.log_date,
+      weightKg: row.weight_kg === null ? '' : String(row.weight_kg),
+      sleepHours: row.sleep_hours === null ? '' : String(row.sleep_hours),
+      workoutType: normaliseWorkoutType(row.workout_type),
+      gymTime: row.gym_time ?? '',
+      preWorkout: row.pre_workout ?? '',
+      postGymEnergy: row.post_gym_energy === null ? '' : String(row.post_gym_energy),
+      treadmillDistanceKm: row.treadmill_distance_km === null ? '' : String(row.treadmill_distance_km),
+      treadmillMinutes: row.treadmill_minutes === null ? '' : String(row.treadmill_minutes),
+      treadmillIncline: row.treadmill_incline === null ? '' : String(row.treadmill_incline),
+      notes: row.notes ?? '',
+      exercises,
+      meals,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    } satisfies DailyLog
+  })
+}
+
+async function fetchCloudLogs(userId: string) {
+  if (!supabase) return []
+
+  const { data: dailyRows, error: dailyError } = await supabase
+    .from('daily_logs')
+    .select('*')
+    .eq('user_id', userId)
+    .order('log_date', { ascending: false })
+
+  if (dailyError) throw dailyError
+  const rows = (dailyRows ?? []) as DailyLogRow[]
+  const ids = rows.map((row) => row.id)
+
+  if (!ids.length) return []
+
+  const [{ data: exerciseRows, error: exerciseError }, { data: mealRows, error: mealError }] =
+    await Promise.all([
+      supabase.from('exercise_entries').select('*').in('daily_log_id', ids).order('position', { ascending: true }),
+      supabase.from('meal_entries').select('*').in('daily_log_id', ids).order('position', { ascending: true }),
+    ])
+
+  if (exerciseError) throw exerciseError
+  if (mealError) throw mealError
+
+  return sortLogs(mapCloudRowsToLogs(rows, (exerciseRows ?? []) as ExerciseRow[], (mealRows ?? []) as MealRow[]))
+}
+
+async function saveLogToCloud(log: DailyLog, userId: string) {
+  if (!supabase) throw new Error('Supabase is not configured.')
+
+  const row = {
+    id: log.id,
+    user_id: userId,
+    log_date: log.date,
+    weight_kg: toNullableNumber(log.weightKg),
+    sleep_hours: toNullableNumber(log.sleepHours),
+    workout_type: log.workoutType,
+    gym_time: emptyToNull(log.gymTime),
+    pre_workout: emptyToNull(log.preWorkout),
+    post_gym_energy: toNullableInteger(log.postGymEnergy),
+    treadmill_distance_km: toNullableNumber(log.treadmillDistanceKm),
+    treadmill_minutes: parseDurationToMinutes(log.treadmillMinutes),
+    treadmill_incline: toNullableNumber(log.treadmillIncline),
+    notes: emptyToNull(log.notes),
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data: savedRow, error: upsertError } = await supabase
+    .from('daily_logs')
+    .upsert(row, { onConflict: 'user_id,log_date' })
+    .select('*')
+    .single()
+
+  if (upsertError) throw upsertError
+
+  const cloudLogId = (savedRow as DailyLogRow).id
+
+  const [{ error: exerciseDeleteError }, { error: mealDeleteError }] = await Promise.all([
+    supabase.from('exercise_entries').delete().eq('daily_log_id', cloudLogId),
+    supabase.from('meal_entries').delete().eq('daily_log_id', cloudLogId),
+  ])
+
+  if (exerciseDeleteError) throw exerciseDeleteError
+  if (mealDeleteError) throw mealDeleteError
+
+  if (log.exercises.length) {
+    const { error } = await supabase.from('exercise_entries').insert(
+      log.exercises.map((exercise, index) => ({
+        id: exercise.id,
+        daily_log_id: cloudLogId,
+        exercise_name: exercise.name || 'Unnamed exercise',
+        weight: emptyToNull(exercise.weight),
+        unit: exercise.unit,
+        sets: emptyToNull(exercise.sets),
+        reps: emptyToNull(exercise.reps),
+        completed_sets: exercise.completedSets,
+        position: index,
+      })),
+    )
+
+    if (error) throw error
+  }
+
+  if (log.meals.length) {
+    const { error } = await supabase.from('meal_entries').insert(
+      log.meals.map((meal, index) => ({
+        id: meal.id,
+        daily_log_id: cloudLogId,
+        label: meal.label,
+        description: emptyToNull(meal.description),
+        protein_score: meal.proteinScore,
+        position: index,
+      })),
+    )
+
+    if (error) throw error
+  }
+
+  return {
+    ...log,
+    id: cloudLogId,
+    createdAt: (savedRow as DailyLogRow).created_at,
+    updatedAt: (savedRow as DailyLogRow).updated_at,
+  }
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('today')
   const [logs, setLogs] = useState<DailyLog[]>(loadLogs)
@@ -188,6 +432,66 @@ function App() {
   const [coachQuestion, setCoachQuestion] = useState('Why am I tired after gym and what should I change tomorrow?')
   const [saveState, setSaveState] = useState<'idle' | 'saved'>('idle')
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
+  const [session, setSession] = useState<Session | null>(null)
+  const [syncState, setSyncState] = useState<SyncState>(isSupabaseConfigured ? 'checking' : 'local')
+  const [syncError, setSyncError] = useState('')
+  const [forceLocalMode, setForceLocalMode] = useState(false)
+
+  const user = session?.user ?? null
+  const cloudMode = Boolean(isSupabaseConfigured && user && !forceLocalMode)
+
+  useEffect(() => {
+    if (!supabase) {
+      setSyncState('local')
+      return
+    }
+
+    let mounted = true
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return
+      setSession(data.session)
+      setSyncState(data.session ? 'checking' : 'local')
+    })
+
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession)
+      setSyncState(nextSession ? 'checking' : 'local')
+      setForceLocalMode(false)
+    })
+
+    return () => {
+      mounted = false
+      data.subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!supabase || !user || forceLocalMode) return
+
+    let cancelled = false
+
+    async function loadCloud() {
+      try {
+        setSyncState('syncing')
+        setSyncError('')
+        const cloudLogs = await fetchCloudLogs(user.id)
+        if (cancelled) return
+        setLogs(cloudLogs)
+        setSyncState('synced')
+      } catch (error) {
+        if (cancelled) return
+        setSyncState('error')
+        setSyncError(error instanceof Error ? error.message : 'Could not load Supabase logs.')
+      }
+    }
+
+    loadCloud()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, forceLocalMode])
 
   useEffect(() => {
     const existing = logs.find((log) => log.date === activeDate)
@@ -209,16 +513,55 @@ function App() {
     setDraft((current) => ({ ...current, [key]: value, updatedAt: new Date().toISOString() }))
   }
 
-  function saveDraft() {
+  async function saveDraft() {
     const savedDraft = {
       ...draft,
       updatedAt: new Date().toISOString(),
       createdAt: draft.createdAt || new Date().toISOString(),
     }
 
-    setLogs((current) => sortLogs([savedDraft, ...current.filter((log) => log.date !== savedDraft.date)]))
-    setSaveState('saved')
-    window.setTimeout(() => setSaveState('idle'), 1600)
+    try {
+      setSaveState('idle')
+      setSyncError('')
+
+      const finalDraft = cloudMode ? await saveLogToCloud(savedDraft, user.id) : savedDraft
+
+      setLogs((current) => sortLogs([finalDraft, ...current.filter((log) => log.date !== finalDraft.date)]))
+      setSyncState(cloudMode ? 'synced' : 'local')
+      setSaveState('saved')
+      window.setTimeout(() => setSaveState('idle'), 1600)
+    } catch (error) {
+      setSyncState('error')
+      setSyncError(error instanceof Error ? error.message : 'Could not save log.')
+    }
+  }
+
+  async function syncLocalToCloud() {
+    if (!user || !supabase) return
+
+    try {
+      setSyncState('syncing')
+      setSyncError('')
+      const synced: DailyLog[] = []
+
+      for (const log of sortLogs(logs).reverse()) {
+        synced.push(await saveLogToCloud(log, user.id))
+      }
+
+      setLogs(sortLogs(synced))
+      setSyncState('synced')
+    } catch (error) {
+      setSyncState('error')
+      setSyncError(error instanceof Error ? error.message : 'Could not sync local logs.')
+    }
+  }
+
+  async function signOut() {
+    if (!supabase) return
+    await supabase.auth.signOut()
+    setSession(null)
+    setForceLocalMode(false)
+    setSyncState('local')
   }
 
   function loadTemplate(type: WorkoutType) {
@@ -283,6 +626,10 @@ function App() {
     URL.revokeObjectURL(url)
   }
 
+  if (isSupabaseConfigured && !session && !forceLocalMode) {
+    return <AuthGate localLogCount={logs.length} onContinueLocal={() => setForceLocalMode(true)} />
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar" aria-label="GymOS navigation">
@@ -308,11 +655,17 @@ function App() {
           ))}
         </nav>
 
-        <div className="sync-card">
-          <p className="eyebrow">Storage mode</p>
-          <strong>Local-first prototype</strong>
-          <span>Saved in this browser. Supabase sync is the next build step.</span>
-        </div>
+        <StorageCard
+          cloudMode={cloudMode}
+          configured={isSupabaseConfigured}
+          forceLocalMode={forceLocalMode}
+          logs={logs}
+          syncError={syncError}
+          syncLocalToCloud={syncLocalToCloud}
+          syncState={syncState}
+          user={user}
+          signOut={signOut}
+        />
       </aside>
 
       <section className="workspace">
@@ -332,8 +685,8 @@ function App() {
             <button className="ghost-button" type="button" onClick={exportData} disabled={!logs.length}>
               Export
             </button>
-            <button className="primary-button" type="button" onClick={saveDraft}>
-              {saveState === 'saved' ? 'Saved' : 'Save log'}
+            <button className="primary-button" type="button" onClick={saveDraft} disabled={syncState === 'syncing'}>
+              {saveState === 'saved' ? 'Saved' : syncState === 'syncing' ? 'Syncing…' : 'Save log'}
             </button>
           </div>
         </header>
@@ -391,6 +744,176 @@ function App() {
         )}
       </section>
     </main>
+  )
+}
+
+function AuthGate({
+  localLogCount,
+  onContinueLocal,
+}: {
+  localLogCount: number
+  onContinueLocal: () => void
+}) {
+  const [mode, setMode] = useState<AuthMode>('sign-in')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [message, setMessage] = useState('')
+  const [isWorking, setIsWorking] = useState(false)
+
+  async function submitAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabase) return
+
+    try {
+      setIsWorking(true)
+      setMessage('')
+
+      const result =
+        mode === 'sign-in'
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({ email, password })
+
+      if (result.error) throw result.error
+
+      if (mode === 'sign-up' && !result.data.session) {
+        setMessage('Account created. Check your email if Supabase asks you to confirm the login.')
+      } else {
+        setMessage('Signed in. Loading GymOS…')
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Authentication failed.')
+    } finally {
+      setIsWorking(false)
+    }
+  }
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-card">
+        <div className="brand-lockup">
+          <div className="brand-mark">G</div>
+          <div>
+            <p className="eyebrow">Private training system</p>
+            <h1>GymOS</h1>
+          </div>
+        </div>
+
+        <div>
+          <h2>{mode === 'sign-in' ? 'Sign in to sync your logs' : 'Create your GymOS account'}</h2>
+          <p>
+            This unlocks the actual point of the app: the same weight, workout, food and fatigue logs on your
+            iPhone and PC.
+          </p>
+        </div>
+
+        <form className="auth-form" onSubmit={submitAuth}>
+          <label>
+            Email
+            <input
+              autoComplete="email"
+              inputMode="email"
+              placeholder="you@example.com"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            Password
+            <input
+              autoComplete={mode === 'sign-in' ? 'current-password' : 'new-password'}
+              placeholder="Minimum 6 characters"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+          </label>
+
+          {message && <p className="auth-message">{message}</p>}
+
+          <button className="primary-button" type="submit" disabled={isWorking}>
+            {isWorking ? 'Working…' : mode === 'sign-in' ? 'Sign in' : 'Create account'}
+          </button>
+        </form>
+
+        <div className="auth-actions">
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => {
+              setMessage('')
+              setMode(mode === 'sign-in' ? 'sign-up' : 'sign-in')
+            }}
+          >
+            {mode === 'sign-in' ? 'Need an account?' : 'Already have an account?'}
+          </button>
+          <button className="ghost-button" type="button" onClick={onContinueLocal}>
+            Continue local only ({localLogCount} saved)
+          </button>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function StorageCard({
+  cloudMode,
+  configured,
+  forceLocalMode,
+  logs,
+  syncError,
+  syncLocalToCloud,
+  syncState,
+  user,
+  signOut,
+}: {
+  cloudMode: boolean
+  configured: boolean
+  forceLocalMode: boolean
+  logs: DailyLog[]
+  syncError: string
+  syncLocalToCloud: () => Promise<void>
+  syncState: SyncState
+  user: User | null
+  signOut: () => Promise<void>
+}) {
+  return (
+    <div className="sync-card">
+      <p className="eyebrow">Storage mode</p>
+      <div className="sync-title">
+        <span className={`sync-dot ${cloudMode ? 'cloud' : syncState === 'error' ? 'error' : ''}`} />
+        <strong>{cloudMode ? 'Cloud sync active' : configured && forceLocalMode ? 'Local override' : 'Local-first'}</strong>
+      </div>
+      <span>
+        {cloudMode
+          ? `Signed in${user?.email ? ` as ${user.email}` : ''}. Logs save to Supabase and this browser.`
+          : configured
+            ? 'Supabase is configured, but this session is local-only.'
+            : 'Supabase is not configured yet. Data is saved only in this browser.'}
+      </span>
+
+      {syncError && <p className="sync-error">{syncError}</p>}
+
+      <div className="storage-actions">
+        {user && !cloudMode && (
+          <button className="ghost-button" type="button" onClick={syncLocalToCloud} disabled={!logs.length || syncState === 'syncing'}>
+            Push local logs
+          </button>
+        )}
+        {cloudMode && (
+          <button className="ghost-button" type="button" onClick={syncLocalToCloud} disabled={!logs.length || syncState === 'syncing'}>
+            Re-sync
+          </button>
+        )}
+        {user && (
+          <button className="danger-button" type="button" onClick={signOut}>
+            Sign out
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -861,7 +1384,7 @@ function buildStats(logs: DailyLog[]) {
   const delta = latestWeight !== null && oldestRecentWeight !== null ? latestWeight - oldestRecentWeight : null
   const last7 = sorted.slice(0, 7)
   const trainingDaysLast7 = last7.filter((log) => log.workoutType !== 'Rest' && (log.exercises.length || log.treadmillMinutes)).length
-  const cardioMinutesLast7 = last7.reduce((sum, log) => sum + (safeNumber(log.treadmillMinutes.replace(':', '.')) ?? 0), 0)
+  const cardioMinutesLast7 = last7.reduce((sum, log) => sum + (parseDurationToMinutes(log.treadmillMinutes) ?? 0), 0)
   const energyValues = last7.map((log) => safeNumber(log.postGymEnergy)).filter((value): value is number => value !== null)
   const averageEnergy = average(energyValues)
 

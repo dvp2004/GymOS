@@ -1,5 +1,8 @@
--- GymOS Supabase schema draft. This is not wired into the frontend yet.
--- Run this in Supabase SQL editor when we start the database-sync phase.
+-- GymOS Supabase schema v2.
+-- Run the whole file in Supabase SQL Editor.
+-- It creates private per-user tables with Row Level Security.
+
+create extension if not exists pgcrypto;
 
 create table if not exists public.daily_logs (
   id uuid primary key default gen_random_uuid(),
@@ -56,50 +59,174 @@ alter table public.exercise_entries enable row level security;
 alter table public.meal_entries enable row level security;
 alter table public.ai_feedback enable row level security;
 
-create policy "Users can manage own daily logs"
-  on public.daily_logs
-  for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+drop policy if exists "daily_logs_select_own" on public.daily_logs;
+drop policy if exists "daily_logs_insert_own" on public.daily_logs;
+drop policy if exists "daily_logs_update_own" on public.daily_logs;
+drop policy if exists "daily_logs_delete_own" on public.daily_logs;
 
-create policy "Users can manage exercises through own logs"
-  on public.exercise_entries
-  for all
-  using (
-    exists (
-      select 1 from public.daily_logs
-      where daily_logs.id = exercise_entries.daily_log_id
-      and daily_logs.user_id = auth.uid()
-    )
+create policy "daily_logs_select_own"
+on public.daily_logs
+for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+create policy "daily_logs_insert_own"
+on public.daily_logs
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+create policy "daily_logs_update_own"
+on public.daily_logs
+for update
+to authenticated
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id);
+
+create policy "daily_logs_delete_own"
+on public.daily_logs
+for delete
+to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "exercise_entries_select_own" on public.exercise_entries;
+drop policy if exists "exercise_entries_insert_own" on public.exercise_entries;
+drop policy if exists "exercise_entries_update_own" on public.exercise_entries;
+drop policy if exists "exercise_entries_delete_own" on public.exercise_entries;
+
+create policy "exercise_entries_select_own"
+on public.exercise_entries
+for select
+to authenticated
+using (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = exercise_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
   )
-  with check (
-    exists (
-      select 1 from public.daily_logs
-      where daily_logs.id = exercise_entries.daily_log_id
-      and daily_logs.user_id = auth.uid()
-    )
-  );
+);
 
-create policy "Users can manage meals through own logs"
-  on public.meal_entries
-  for all
-  using (
-    exists (
-      select 1 from public.daily_logs
-      where daily_logs.id = meal_entries.daily_log_id
-      and daily_logs.user_id = auth.uid()
-    )
+create policy "exercise_entries_insert_own"
+on public.exercise_entries
+for insert
+to authenticated
+with check (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = exercise_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
   )
-  with check (
-    exists (
-      select 1 from public.daily_logs
-      where daily_logs.id = meal_entries.daily_log_id
-      and daily_logs.user_id = auth.uid()
-    )
-  );
+);
 
-create policy "Users can manage own AI feedback"
-  on public.ai_feedback
-  for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+create policy "exercise_entries_update_own"
+on public.exercise_entries
+for update
+to authenticated
+using (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = exercise_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
+  )
+)
+with check (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = exercise_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
+  )
+);
+
+create policy "exercise_entries_delete_own"
+on public.exercise_entries
+for delete
+to authenticated
+using (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = exercise_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "meal_entries_select_own" on public.meal_entries;
+drop policy if exists "meal_entries_insert_own" on public.meal_entries;
+drop policy if exists "meal_entries_update_own" on public.meal_entries;
+drop policy if exists "meal_entries_delete_own" on public.meal_entries;
+
+create policy "meal_entries_select_own"
+on public.meal_entries
+for select
+to authenticated
+using (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = meal_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
+  )
+);
+
+create policy "meal_entries_insert_own"
+on public.meal_entries
+for insert
+to authenticated
+with check (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = meal_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
+  )
+);
+
+create policy "meal_entries_update_own"
+on public.meal_entries
+for update
+to authenticated
+using (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = meal_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
+  )
+)
+with check (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = meal_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
+  )
+);
+
+create policy "meal_entries_delete_own"
+on public.meal_entries
+for delete
+to authenticated
+using (
+  exists (
+    select 1 from public.daily_logs
+    where public.daily_logs.id = meal_entries.daily_log_id
+    and public.daily_logs.user_id = (select auth.uid())
+  )
+);
+
+drop policy if exists "ai_feedback_select_own" on public.ai_feedback;
+drop policy if exists "ai_feedback_insert_own" on public.ai_feedback;
+drop policy if exists "ai_feedback_delete_own" on public.ai_feedback;
+
+create policy "ai_feedback_select_own"
+on public.ai_feedback
+for select
+to authenticated
+using ((select auth.uid()) = user_id);
+
+create policy "ai_feedback_insert_own"
+on public.ai_feedback
+for insert
+to authenticated
+with check ((select auth.uid()) = user_id);
+
+create policy "ai_feedback_delete_own"
+on public.ai_feedback
+for delete
+to authenticated
+using ((select auth.uid()) = user_id);
