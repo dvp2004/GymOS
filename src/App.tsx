@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { isSupabaseConfigured, supabase } from './lib/supabase'
+import { isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from './lib/supabase'
 import './App.css'
 
 type Tab = 'today' | 'workout' | 'nutrition' | 'trends' | 'coach'
@@ -788,20 +788,21 @@ function AuthGate({
   }
 
   async function signInWithGoogle() {
-    if (!supabase) return
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setMessage('Supabase URL or anon key is missing at runtime.')
+      return
+    }
 
     try {
       setIsWorking(true)
       setMessage('Redirecting to Google…')
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-        },
-      })
+      const authUrl = new URL(`${supabaseUrl}/auth/v1/authorize`)
+      authUrl.searchParams.set('provider', 'google')
+      authUrl.searchParams.set('redirect_to', window.location.origin)
+      authUrl.searchParams.set('apikey', supabaseAnonKey)
 
-      if (error) throw error
+      window.location.href = authUrl.toString()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Google sign-in failed.')
       setIsWorking(false)
