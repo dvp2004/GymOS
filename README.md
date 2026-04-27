@@ -68,3 +68,18 @@ npm run dev
 4. Better charts
 5. CSV export
 6. Rest timer and workout-day automation
+
+
+## Google sign-in
+
+The login screen includes a Google OAuth button. It will only work after Google is enabled in Supabase:
+
+1. Supabase → Authentication → Providers → Google.
+2. Copy the Supabase callback URL.
+3. Google Cloud Console → create OAuth Client ID → Web application.
+4. Add `http://localhost:5173` as an authorised JavaScript origin for local testing.
+5. Add the Supabase callback URL as an authorised redirect URI.
+6. Paste the Google Client ID and Client Secret back into Supabase and enable the provider.
+7. Supabase → Authentication → URL Configuration → add `http://localhost:5173/**` as an allowed redirect URL.
+
+Do not request Gmail scopes. GymOS only needs identity sign-in, not email inbox access.

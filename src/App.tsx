@@ -787,6 +787,27 @@ function AuthGate({
     }
   }
 
+  async function signInWithGoogle() {
+    if (!supabase) return
+
+    try {
+      setIsWorking(true)
+      setMessage('Redirecting to Google…')
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        },
+      })
+
+      if (error) throw error
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Google sign-in failed.')
+      setIsWorking(false)
+    }
+  }
+
   return (
     <main className="auth-shell">
       <section className="auth-card">
@@ -804,6 +825,19 @@ function AuthGate({
             This unlocks the actual point of the app: the same weight, workout, food and fatigue logs on your
             iPhone and PC.
           </p>
+        </div>
+
+        <div className="auth-form">
+          <button className="google-button" type="button" onClick={signInWithGoogle} disabled={isWorking}>
+            <span className="google-mark" aria-hidden="true">G</span>
+            Continue with Google
+          </button>
+
+          <div className="auth-divider">
+            <span />
+            <strong>or use email</strong>
+            <span />
+          </div>
         </div>
 
         <form className="auth-form" onSubmit={submitAuth}>
