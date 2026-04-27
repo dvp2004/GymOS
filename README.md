@@ -57,7 +57,7 @@ npm run dev
 GymOS currently stores data in two places:
 
 1. Supabase Postgres when you are signed in.
-   - `daily_logs`: one row per date, including weight, optional waist size, sleep, energy, treadmill and notes.
+   - `daily_logs`: one row per date, including weight, optional waist size, sleep, treadmill and notes.
    - `exercise_entries`: exercises linked to a daily log.
    - `meal_entries`: meals linked to a daily log.
    - `ai_feedback`: reserved for future AI responses.
@@ -90,7 +90,6 @@ Example:
     "workoutType": "Upper",
     "gymTime": "10:15-11:45",
     "preWorkout": "2 bananas + latte",
-    "postGymEnergy": "3",
     "treadmillDistanceKm": "1.00",
     "treadmillMinutes": "11:58",
     "treadmillIncline": "6.0",
@@ -125,9 +124,9 @@ The login screen includes a Google OAuth button. It will only work after Google 
 
 Do not request Gmail scopes. GymOS only needs identity sign-in, not email inbox access.
 
-## Patch v8 notes
+## Patch v9 notes
 
-- Blank optional numeric fields, `-`, `—`, `n/a`, and similar placeholders are now stored as `NULL`, not `0`.
-- `post_gym_energy` is optional and is clamped to the valid 0-10 range before saving.
-- The old JSON upload control has been restored under `Trends -> Import old logs`.
-- Run the SQL schema again in Supabase to replace the older `post_gym_energy` check constraint.
+- The visible post-gym energy input and trend cards have been removed. The database column can stay for backward compatibility, but GymOS no longer asks you to track it.
+- Workout chips now act as safe view selectors. Clicking Lower on an Upper day will not overwrite the saved Upper exercises. You must explicitly apply a template to replace the day.
+- Trends now includes an exercise progression board, split balance, cardio bests, and volume leaders based on repeated exercises.
+- Imported data stays in Supabase after one successful import. You do not need to import the JSON again after refresh or re-opening the app.

@@ -211,7 +211,7 @@ function safeNumber(value: string | number | null | undefined) {
   const cleaned = String(value)
     .trim()
     .replace(/,/g, '')
-    .replace(/s*(kg|kgs|cm|lbs|lb)$/i, '')
+    .replace(/\s*(kg|kgs|cm|lbs|lb)$/i, '')
 
   if (isUnavailableValue(cleaned)) return null
 
@@ -1185,7 +1185,6 @@ function TodayView({
     { label: 'Waist', value: draft.waistSizeCm ? `${draft.waistSizeCm} cm` : 'Optional', detail: 'Useful when weight stalls' },
     { label: '7-day avg', value: formatKg(stats.sevenDayAverage), detail: stats.weightDeltaText },
     { label: 'Gym streak', value: `${stats.trainingDaysLast7}/7`, detail: 'Days with training logged' },
-    { label: 'Post-gym energy', value: draft.postGymEnergy ? `${draft.postGymEnergy}/10` : '—', detail: 'Fatigue signal, not decoration' },
   ]
 
   return (
@@ -1259,15 +1258,6 @@ function TodayView({
               onChange={(event) => updateDraft('gymTime', event.target.value)}
             />
           </label>
-          <label>
-            Post-gym energy /10
-            <input
-              inputMode="numeric"
-              placeholder="3"
-              value={draft.postGymEnergy}
-              onChange={(event) => updateDraft('postGymEnergy', event.target.value)}
-            />
-          </label>
         </div>
 
         <label>
@@ -1298,6 +1288,19 @@ function WorkoutView({
   addExercise: () => void
   removeExercise: (id: string) => void
 }) {
+  const [selectedWorkoutType, setSelectedWorkoutType] = useState<WorkoutType>(draft.workoutType)
+
+  useEffect(() => {
+    setSelectedWorkoutType(draft.workoutType)
+  }, [draft.date, draft.workoutType])
+
+  const isViewingSavedType = selectedWorkoutType === draft.workoutType
+  const visibleExercises = isViewingSavedType ? draft.exercises : []
+
+  function applySelectedTemplate() {
+    loadTemplate(selectedWorkoutType)
+  }
+
   return (
     <div className="view-grid">
       <section className="panel span-2">
@@ -1306,7 +1309,7 @@ function WorkoutView({
             <p className="eyebrow">Training plan</p>
             <h3>Workout builder</h3>
           </div>
-          <button className="ghost-button" type="button" onClick={addExercise}>
+          <button className="ghost-button" type="button" onClick={addExercise} disabled={!isViewingSavedType}>
             Add exercise
           </button>
         </div>
@@ -1316,87 +1319,104 @@ function WorkoutView({
             <button
               key={type}
               type="button"
-              className={draft.workoutType === type ? 'chip active' : 'chip'}
-              onClick={() => loadTemplate(type)}
+              className={selectedWorkoutType === type ? 'chip active' : 'chip'}
+              onClick={() => setSelectedWorkoutType(type)}
             >
               {type}
             </button>
           ))}
         </div>
+        <p className="helper-copy tight">
+          These chips are now a view selector first. They will not overwrite a saved day unless you explicitly apply a template.
+        </p>
       </section>
 
       <section className="panel span-2 form-panel">
         <div className="section-heading compact">
           <div>
             <p className="eyebrow">Strength work</p>
-            <h3>Exercises</h3>
+            <h3>{selectedWorkoutType} exercises</h3>
           </div>
-          <span className="status-pill">{draft.exercises.length} items</span>
+          <span className="status-pill">{visibleExercises.length} items</span>
         </div>
 
-        <div className="exercise-list">
-          {draft.exercises.length === 0 && (
-            <div className="empty-state">No strength exercises for this day. Add cardio, recovery guidance, or a custom exercise.</div>
-          )}
+        {!isViewingSavedType && (
+          <div className="empty-state action-state">
+            <strong>No {selectedWorkoutType} data is saved for {new Date(`${draft.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.</strong>
+            <span>
+              The saved log for this date is marked as {draft.workoutType}. Switching views no longer mutates your real data.
+            </span>
+            <button className="ghost-button" type="button" onClick={applySelectedTemplate}>
+              Replace this day with a {selectedWorkoutType} template
+            </button>
+          </div>
+        )}
 
-          {draft.exercises.map((exercise) => (
-            <article className="exercise-card" key={exercise.id}>
-              <div className="exercise-main">
-                <input
-                  aria-label="Exercise name"
-                  className="exercise-name"
-                  value={exercise.name}
-                  onChange={(event) => updateExercise(exercise.id, { name: event.target.value })}
-                />
-                <div className="mini-grid">
+        {isViewingSavedType && (
+          <div className="exercise-list">
+            {visibleExercises.length === 0 && (
+              <div className="empty-state">No strength exercises for this day. Add cardio, recovery guidance, or a custom exercise.</div>
+            )}
+
+            {visibleExercises.map((exercise) => (
+              <article className="exercise-card" key={exercise.id}>
+                <div className="exercise-main">
                   <input
-                    aria-label="Weight"
-                    placeholder="Weight"
-                    value={exercise.weight}
-                    onChange={(event) => updateExercise(exercise.id, { weight: event.target.value })}
+                    aria-label="Exercise name"
+                    className="exercise-name"
+                    value={exercise.name}
+                    onChange={(event) => updateExercise(exercise.id, { name: event.target.value })}
                   />
-                  <select
-                    aria-label="Unit"
-                    value={exercise.unit}
-                    onChange={(event) => updateExercise(exercise.id, { unit: event.target.value as ExerciseEntry['unit'] })}
-                  >
-                    <option value="lbs">lbs</option>
-                    <option value="kg">kg</option>
-                    <option value="bodyweight">bodyweight</option>
-                  </select>
-                  <input
-                    aria-label="Sets"
-                    placeholder="Sets"
-                    value={exercise.sets}
-                    onChange={(event) => updateExercise(exercise.id, { sets: event.target.value })}
-                  />
-                  <input
-                    aria-label="Reps"
-                    placeholder="Reps"
-                    value={exercise.reps}
-                    onChange={(event) => updateExercise(exercise.id, { reps: event.target.value })}
-                  />
+                  <div className="mini-grid">
+                    <input
+                      aria-label="Weight"
+                      placeholder="Weight"
+                      value={exercise.weight}
+                      onChange={(event) => updateExercise(exercise.id, { weight: event.target.value })}
+                    />
+                    <select
+                      aria-label="Unit"
+                      value={exercise.unit}
+                      onChange={(event) => updateExercise(exercise.id, { unit: event.target.value as ExerciseEntry['unit'] })}
+                    >
+                      <option value="lbs">lbs</option>
+                      <option value="kg">kg</option>
+                      <option value="bodyweight">bodyweight</option>
+                    </select>
+                    <input
+                      aria-label="Sets"
+                      placeholder="Sets"
+                      value={exercise.sets}
+                      onChange={(event) => updateExercise(exercise.id, { sets: event.target.value })}
+                    />
+                    <input
+                      aria-label="Reps"
+                      placeholder="Reps"
+                      value={exercise.reps}
+                      onChange={(event) => updateExercise(exercise.id, { reps: event.target.value })}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div className="set-dots" aria-label="Completed sets">
-                {Array.from({ length: Math.max(Number(exercise.sets) || 0, 1) }).map((_, index) => (
-                  <button
-                    key={index}
-                    type="button"
-                    className={index < exercise.completedSets ? 'done' : ''}
-                    onClick={() => updateExercise(exercise.id, { completedSets: index + 1 === exercise.completedSets ? index : index + 1 })}
-                    aria-label={`Mark set ${index + 1}`}
-                  />
-                ))}
-              </div>
+                <div className="set-dots" aria-label="Completed sets">
+                  {Array.from({ length: Math.max(Number(exercise.sets) || 0, 1) }).map((_, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className={index < exercise.completedSets ? 'done' : ''}
+                      onClick={() => updateExercise(exercise.id, { completedSets: index + 1 === exercise.completedSets ? index : index + 1 })}
+                      aria-label={`Mark set ${index + 1}`}
+                    />
+                  ))}
+                </div>
 
-              <button className="danger-button" type="button" onClick={() => removeExercise(exercise.id)}>
-                Remove
-              </button>
-            </article>
-          ))}
-        </div>
+                <button className="danger-button" type="button" onClick={() => removeExercise(exercise.id)}>
+                  Remove
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel span-2 form-panel">
@@ -1539,6 +1559,9 @@ function TrendsView({
   const [importText, setImportText] = useState('')
   const [importMessage, setImportMessage] = useState('')
   const latestWaist = sorted.find((log) => log.waistSizeCm)?.waistSizeCm ?? ''
+  const exerciseDashboard = useMemo(() => buildExerciseDashboard(logs), [logs])
+  const splitCounts = useMemo(() => buildSplitCounts(logs), [logs])
+  const cardioStats = useMemo(() => buildCardioDashboard(logs), [logs])
 
   async function handleImport() {
     try {
@@ -1598,10 +1621,63 @@ function TrendsView({
             <span>Cardio last 7</span>
             <strong>{stats.cardioMinutesLast7} min</strong>
           </div>
+        </div>
+      </section>
+
+      <section className="panel span-2">
+        <div className="section-heading compact">
           <div>
-            <span>Avg energy</span>
-            <strong>{stats.averageEnergy === null ? '—' : `${stats.averageEnergy.toFixed(1)}/10`}</strong>
+            <p className="eyebrow">Progressive overload</p>
+            <h3>Exercise progression board</h3>
           </div>
+          <span className="status-pill">{exerciseDashboard.progression.length} tracked</span>
+        </div>
+
+        <div className="progression-grid">
+          {exerciseDashboard.progression.length === 0 && (
+            <div className="empty-state">Add a few more repeated exercise logs and this will show load, reps and session progress.</div>
+          )}
+          {exerciseDashboard.progression.slice(0, 8).map((item) => (
+            <article className="progress-card" key={item.name}>
+              <div>
+                <strong>{item.name}</strong>
+                <span>{item.sessions} sessions logged</span>
+              </div>
+              <div className="progress-values">
+                <span>First: {item.firstLabel}</span>
+                <span>Latest: {item.latestLabel}</span>
+                <span>Best load: {item.bestLabel}</span>
+              </div>
+              <em>{item.deltaLabel}</em>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel span-2">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Training intelligence</p>
+            <h3>Patterns from repeated exercises</h3>
+          </div>
+        </div>
+
+        <div className="analysis-grid">
+          <article className="analysis-card">
+            <span>Split balance</span>
+            <strong>{splitCounts.summary}</strong>
+            <p>Upper {splitCounts.Upper} · Lower {splitCounts.Lower} · Cardio {splitCounts.Cardio} · Rest {splitCounts.Rest}</p>
+          </article>
+          <article className="analysis-card">
+            <span>Cardio best</span>
+            <strong>{cardioStats.bestDistanceLabel}</strong>
+            <p>Longest duration: {cardioStats.bestDurationLabel}; latest logged: {cardioStats.latestLabel}</p>
+          </article>
+          <article className="analysis-card">
+            <span>Volume leaders</span>
+            <strong>{exerciseDashboard.volumeLeaders[0]?.name ?? '—'}</strong>
+            <p>{exerciseDashboard.volumeLeaders.slice(0, 4).map((item) => `${item.name} ${item.volumeLabel}`).join(' · ') || 'Need more weighted entries.'}</p>
+          </article>
         </div>
       </section>
 
@@ -1633,7 +1709,6 @@ function TrendsView({
     "workoutType": "Upper",
     "gymTime": "10:15-11:45",
     "preWorkout": "2 bananas + latte",
-    "postGymEnergy": "3",
     "treadmillDistanceKm": "1.00",
     "treadmillMinutes": "11:58",
     "treadmillIncline": "6.0",
@@ -1671,7 +1746,7 @@ function TrendsView({
               </div>
               <div>
                 <strong>{log.weightKg ? `${log.weightKg} kg` : '—'}</strong>
-                <span>Waist {log.waistSizeCm || '—'} cm · Energy {log.postGymEnergy || '—'}/10</span>
+                <span>Waist {log.waistSizeCm || '—'} cm · Treadmill {log.treadmillDistanceKm || '—'} km</span>
               </div>
               <button className="ghost-button compact-button" type="button" onClick={() => editLog(log.date)}>
                 Edit
@@ -1735,6 +1810,185 @@ function CoachView({
   )
 }
 
+
+function titleCase(value: string) {
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
+function canonicalExerciseName(name: string) {
+  const cleaned = name
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/^machine\s+/g, '')
+    .replace(/[-_/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (cleaned.includes('lat pulldown') || cleaned.includes('lat pull down')) return 'Lat pulldown'
+  if (cleaned.includes('chest press')) return 'Chest press'
+  if (cleaned.includes('seated row')) return 'Seated row'
+  if (cleaned.includes('single arm row')) return 'Single-arm row'
+  if (cleaned.includes('bicep')) return 'Bicep curl'
+  if (cleaned.includes('hammer')) return 'Hammer curl'
+  if (cleaned.includes('lateral raise')) return 'Lateral raise'
+  if (cleaned.includes('triceps pushdown')) return 'Triceps pushdown'
+  if (cleaned.includes('triceps extension')) return 'Triceps extension'
+  if (cleaned.includes('shoulder press')) return 'Shoulder press'
+  if (cleaned.includes('shoulder shrug')) return 'Shoulder shrug'
+  if (cleaned.includes('leg curl')) return 'Leg curl'
+  if (cleaned.includes('leg extension')) return 'Leg extension'
+  if (cleaned.includes('romanian deadlift')) return 'Romanian deadlift'
+  if (cleaned.includes('reverse lunge')) return 'Reverse lunge'
+  if (cleaned.includes('calf')) return 'Calf raise'
+  if (cleaned.includes('squat')) return 'Squat'
+  if (cleaned.includes('plank')) return 'Plank'
+
+  return titleCase(cleaned || 'Unnamed exercise')
+}
+
+function firstNumber(value: string | number | null | undefined) {
+  if (isUnavailableValue(value)) return null
+  const match = String(value).match(/-?\d+(?:\.\d+)?/)
+  if (!match) return null
+  const parsed = Number(match[0])
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function formatLoad(weight: number | null, unit: ExerciseEntry['unit'] | string | null | undefined, fallback = '—') {
+  if (unit === 'bodyweight') return 'bodyweight'
+  if (weight === null) return fallback
+  const value = weight % 1 === 0 ? weight.toFixed(0) : weight.toFixed(1)
+  return `${value} ${unit || 'lbs'}`
+}
+
+function formatExerciseEntry(exercise: ExerciseEntry) {
+  const weight = firstNumber(exercise.weight)
+  const sets = firstNumber(exercise.sets)
+  const reps = firstNumber(exercise.reps)
+  const load = formatLoad(weight, exercise.unit)
+  const scheme = sets && reps ? `${sets}×${reps}` : sets ? `${sets} sets` : reps ? `${reps} reps` : 'logged'
+  return `${load}, ${scheme}`
+}
+
+function buildExerciseDashboard(logs: DailyLog[]) {
+  const byExercise = new Map<string, Array<{ date: string; exercise: ExerciseEntry; weight: number | null; volume: number | null }>>()
+
+  for (const log of [...logs].sort((a, b) => a.date.localeCompare(b.date))) {
+    for (const exercise of log.exercises) {
+      const name = canonicalExerciseName(exercise.name)
+      const weight = firstNumber(exercise.weight)
+      const sets = firstNumber(exercise.sets)
+      const reps = firstNumber(exercise.reps)
+      const volume = weight !== null && weight > 0 && sets !== null && reps !== null ? weight * sets * reps : null
+      const items = byExercise.get(name) ?? []
+      items.push({ date: log.date, exercise, weight, volume })
+      byExercise.set(name, items)
+    }
+  }
+
+  const progression = [...byExercise.entries()]
+    .filter(([, entries]) => entries.length >= 2)
+    .map(([name, entries]) => {
+      const first = entries[0]
+      const latest = entries[entries.length - 1]
+      const weighted = entries.filter((entry) => entry.weight !== null)
+      const best = weighted.reduce<typeof weighted[number] | null>((winner, entry) => {
+        if (!winner) return entry
+        return (entry.weight ?? 0) > (winner.weight ?? 0) ? entry : winner
+      }, null)
+      const firstWeight = first.weight
+      const latestWeight = latest.weight
+      const delta = firstWeight !== null && latestWeight !== null ? latestWeight - firstWeight : null
+
+      return {
+        name,
+        sessions: entries.length,
+        firstLabel: formatExerciseEntry(first.exercise),
+        latestLabel: formatExerciseEntry(latest.exercise),
+        bestLabel: best ? formatLoad(best.weight, best.exercise.unit) : '—',
+        deltaLabel:
+          delta === null
+            ? 'Track load consistently to see direction.'
+            : delta > 0
+              ? `Up ${delta.toFixed(delta % 1 === 0 ? 0 : 1)} ${latest.exercise.unit || 'lbs'} since first log.`
+              : delta < 0
+                ? `Down ${Math.abs(delta).toFixed(delta % 1 === 0 ? 0 : 1)} ${latest.exercise.unit || 'lbs'} since first log.`
+                : 'Load is flat; look for rep quality, form, or volume improvements.',
+      }
+    })
+    .sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name))
+
+  const volumeLeaders = [...byExercise.entries()]
+    .map(([name, entries]) => ({
+      name,
+      volume: entries.reduce((sum, entry) => sum + (entry.volume ?? 0), 0),
+    }))
+    .filter((item) => item.volume > 0)
+    .sort((a, b) => b.volume - a.volume)
+    .map((item) => ({
+      ...item,
+      volumeLabel: item.volume >= 1000 ? `${Math.round(item.volume / 100) / 10}k` : `${Math.round(item.volume)}`,
+    }))
+
+  return { progression, volumeLeaders }
+}
+
+function buildSplitCounts(logs: DailyLog[]) {
+  const counts: Record<WorkoutType, number> = {
+    Upper: 0,
+    Lower: 0,
+    Cardio: 0,
+    Recovery: 0,
+    Rest: 0,
+    Custom: 0,
+  }
+
+  for (const log of logs) {
+    counts[log.workoutType] += 1
+  }
+
+  const summary = Object.entries(counts)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([type, count]) => `${type} ${count}`)
+    .join(' · ') || 'No split data yet'
+
+  return { ...counts, summary }
+}
+
+function buildCardioDashboard(logs: DailyLog[]) {
+  const entries = sortLogs(logs)
+    .map((log) => ({
+      date: log.date,
+      distance: safeNumber(log.treadmillDistanceKm),
+      minutes: parseDurationToMinutes(log.treadmillMinutes),
+    }))
+    .filter((entry) => entry.distance !== null || entry.minutes !== null)
+
+  const latest = entries[0]
+  const bestDistance = entries.reduce<typeof entries[number] | null>((winner, entry) => {
+    if (entry.distance === null) return winner
+    if (!winner || winner.distance === null || entry.distance > winner.distance) return entry
+    return winner
+  }, null)
+  const bestDuration = entries.reduce<typeof entries[number] | null>((winner, entry) => {
+    if (entry.minutes === null) return winner
+    if (!winner || winner.minutes === null || entry.minutes > winner.minutes) return entry
+    return winner
+  }, null)
+
+  return {
+    latestLabel: latest ? `${latest.distance ?? '—'} km / ${latest.minutes === null ? '—' : `${Math.round(latest.minutes)} min`}` : '—',
+    bestDistanceLabel: bestDistance?.distance === null || !bestDistance ? '—' : `${bestDistance.distance.toFixed(2)} km`,
+    bestDurationLabel: bestDuration?.minutes === null || !bestDuration ? '—' : `${Math.round(bestDuration.minutes)} min`,
+  }
+}
+
 function buildStats(logs: DailyLog[]) {
   const sorted = sortLogs(logs)
   const weights = getWeightValues(sorted)
@@ -1766,12 +2020,10 @@ function buildStats(logs: DailyLog[]) {
 
 function buildCoachInsight(draft: DailyLog, stats: ReturnType<typeof buildStats>) {
   const insights: string[] = []
-  const energy = safeNumber(draft.postGymEnergy)
   const sleep = safeNumber(draft.sleepHours)
   const hasPreWorkoutProtein = /egg|yoghurt|curd|milk|paneer|chicken|protein/i.test(`${draft.preWorkout} ${draft.meals.map((meal) => meal.description).join(' ')}`)
 
   if (!draft.weightKg) insights.push('You have not logged weight yet. Without the weigh-in, the trend view is blind.')
-  if (energy !== null && energy <= 4) insights.push('Post-gym energy is low. Treat this as a recovery/fuelling problem, not a motivation problem.')
   if (sleep !== null && sleep < 7) insights.push('Sleep is under 7 hours. Do not pretend food alone will fix poor recovery.')
   if (!hasPreWorkoutProtein) insights.push('Your pre/post workout food looks protein-light. Add eggs, yoghurt/curd, milk, paneer, chicken, or a proper protein source.')
   if (draft.exercises.length > 7) insights.push('This session is getting long. More exercises are not automatically more progress.')
@@ -1789,7 +2041,6 @@ function buildCoachPrompt(draft: DailyLog, logs: DailyLog[], question: string) {
     waistSizeCm: log.waistSizeCm || null,
     workoutType: log.workoutType,
     treadmillMinutes: log.treadmillMinutes || null,
-    postGymEnergy: log.postGymEnergy || null,
   }))
 
   return `You are my direct fitness analyst. Be practical, blunt, and evidence-based.
@@ -1806,7 +2057,6 @@ Recent trend summary:
 - 14-day average weight: ${formatKg(stats.fourteenDayAverage)}
 - Training days in recent 7 logs: ${stats.trainingDaysLast7}/7
 - Cardio minutes in recent 7 logs: ${stats.cardioMinutesLast7}
-- Average post-gym energy: ${stats.averageEnergy === null ? 'unknown' : `${stats.averageEnergy.toFixed(1)}/10`}
 
 Recent logs:
 ${JSON.stringify(recentLogs, null, 2)}

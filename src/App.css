@@ -954,3 +954,82 @@ label {
 .file-import-button input {
   display: none;
 }
+
+.helper-copy.tight {
+  margin-top: 12px;
+}
+
+.action-state {
+  align-items: flex-start;
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+
+.action-state strong {
+  color: var(--text-strong);
+}
+
+.progression-grid,
+.analysis-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.analysis-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.progress-card,
+.analysis-card {
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.progress-card strong,
+.analysis-card strong {
+  color: var(--text-strong);
+  display: block;
+  font-size: 1rem;
+}
+
+.progress-card span,
+.analysis-card span,
+.analysis-card p,
+.progress-card em {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.progress-values {
+  display: grid;
+  gap: 4px;
+}
+
+.progress-card em {
+  color: var(--acid);
+  font-style: normal;
+}
+
+.analysis-card p {
+  line-height: 1.45;
+  margin: 0;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none !important;
+}
+
+@media (max-width: 920px) {
+  .progression-grid,
+  .analysis-grid {
+    grid-template-columns: 1fr;
+  }
+}
