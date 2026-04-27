@@ -1,0 +1,1624 @@
+[
+  {
+    "id": "1c44eff7-f747-4ab7-80ba-d116d0008a2d",
+    "date": "2026-04-27",
+    "weightKg": "",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "",
+    "treadmillMinutes": "",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: - kgs | Treadmill: | B. -km, -:00, incline=6.0 | Machine Front lat-pulldown (Tricep, Bicep, Lats): 85lbs, 3, 12 | Machine Chest Press (Deltoids, Traps & Triceps): 45lbs, 3, 12 | Machine Shoulder Press (Deltoids, Traps & Triceps): 30lbs, 3, 12 | Machine Triceps Pushdown (Triceps): 20lbs, 3, 12 | Machine Seated Row (teres major): 65lbs, 3, 12 | Machine Bicep-curl: 20lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "81ea74ad-8de2-4c17-880f-53dcd2372761",
+        "name": "Machine Front lat-pulldown (Tricep, Bicep, Lats)",
+        "weight": "85",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "c7aedd73-405d-4059-9e2f-b3f94d50af0f",
+        "name": "Machine Chest Press (Deltoids, Traps & Triceps)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "3dd008bf-e63e-439e-8508-5409fcf9d71f",
+        "name": "Machine Shoulder Press (Deltoids, Traps & Triceps)",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "55566854-f740-4ce9-bf9d-25a2982b541b",
+        "name": "Machine Triceps Pushdown (Triceps)",
+        "weight": "20",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "2e9268fd-3172-4314-9ceb-85622ba2d1cf",
+        "name": "Machine Seated Row (teres major)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "70da2c4a-b539-4599-b25e-3ea5265b9d6d",
+        "name": "Machine Bicep-curl",
+        "weight": "20",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "703e6485-4509-41e9-b492-59a79714b9c3",
+    "date": "2026-04-24",
+    "weightKg": "92.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.84",
+    "treadmillMinutes": "10:00",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 92.0 kgs | Treadmill: | B. 0.84km, 10:00, incline=6.0 | Machine Front lat-pulldown (Tricep, Bicep, Lats): 85lbs, 3, 12 | Machine Chest Press (Deltoids, Traps & Triceps): 45lbs, 3, 12 | Machine Triceps Pushdown (Triceps): 15lbs, 3, 12 | Machine Seated Row (teres major): 65lbs, 3, 12 | Machine Bicep-curl: 20lbs, 3, 12 | Hammer curl: 20lbs, 3, 12 | Dumbbell Lateral Raise: 10lbs, 3, 12 | Shoulder shrug: 15lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "b1e19c71-2e9f-434b-adc1-ce1d89ad4a6a",
+        "name": "Machine Front lat-pulldown (Tricep, Bicep, Lats)",
+        "weight": "85",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "fd690bc4-8001-406c-bb36-1f490e15f162",
+        "name": "Machine Chest Press (Deltoids, Traps & Triceps)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "29ef25e6-06cf-4f2a-9881-b94297fbfb6f",
+        "name": "Machine Triceps Pushdown (Triceps)",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "630290a6-1630-4750-9435-18a2a208447c",
+        "name": "Machine Seated Row (teres major)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "3d67f099-4fbc-4c89-81c2-95aa39c0d717",
+        "name": "Machine Bicep-curl",
+        "weight": "20",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "e6efb730-63af-4d01-a1a0-c5e9bd384375",
+        "name": "Hammer curl",
+        "weight": "20",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "1bb271b0-01d0-4800-af50-d381676303c6",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "9be65648-9314-4e05-a236-98e5404ef4ec",
+        "name": "Shoulder shrug",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "4e4d410d-9d2f-41de-b862-a0501d360336",
+    "date": "2026-04-22",
+    "weightKg": "",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Lower",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.75",
+    "treadmillMinutes": "10:00",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: - kgs | Treadmill: | B. 0.75km, 10:00, incline=6.0 | Squats: 0lbs, 3, 12 | Reverse Lunge: 0lbs, 3, 12 | Leg curl (Glutes & Hamstrings): 20lbs, 3, 12 | Leg extension (Quadriceps): 30lbs, 3, 12 | Standing calf Raise: 0lbs, 3, 12 | Plank: , 3, 30 seconds",
+    "exercises": [
+      {
+        "id": "7172e594-4d48-41f9-a1da-613999553d70",
+        "name": "Squats",
+        "weight": "0",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "05604efb-8049-498e-a22d-aaba5f5144b5",
+        "name": "Reverse Lunge",
+        "weight": "0",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "96e48a6f-59cb-4022-bb1a-06a9ab6a7196",
+        "name": "Leg curl (Glutes & Hamstrings)",
+        "weight": "20",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "0e688327-6aa7-4122-8e1f-c24fe70f2f19",
+        "name": "Leg extension (Quadriceps)",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "9c862bf1-f178-4c55-ab38-8269a64a5a95",
+        "name": "Standing calf Raise",
+        "weight": "0",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "82f4abe4-b896-4bbc-844f-97df4e762e17",
+        "name": "Plank",
+        "weight": "",
+        "unit": "bodyweight",
+        "sets": "3",
+        "reps": "30 seconds",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "67611cd4-71be-42e8-b3f9-a2e8a17f1ed6",
+    "date": "2026-04-21",
+    "weightKg": "",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.84",
+    "treadmillMinutes": "10:00",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: - kgs | Treadmill: | B. 0.84km, 10:00, incline=6.0 | Machine Front lat-pulldown (Arms & Back): 75lbs, 3, 12 | Machine Chest Press (Chest, Shoulders & Triceps): 45lbs, 3, 12 | Machine Triceps Pushdown (Triceps): 10lbs, 3, 12 | Seated Row (teres major): 65lbs, 3, 12 | Bicep-curl: 15lbs, 3, 12 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 10lbs, 3, 12 | Shoulder shrug: 15lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "3077c6ef-788a-4fbc-b70e-1d9cbd3c5910",
+        "name": "Machine Front lat-pulldown (Arms & Back)",
+        "weight": "75",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "0b874ce2-2a79-4b8f-b850-2afd8de0ff14",
+        "name": "Machine Chest Press (Chest, Shoulders & Triceps)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "1b556796-7f8f-48e1-b95f-a4d361c51db1",
+        "name": "Machine Triceps Pushdown (Triceps)",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "319d5437-5045-4687-9c75-a7d0dff1d23d",
+        "name": "Seated Row (teres major)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "8f2c0591-b56f-4531-8574-9a8b66d4e36e",
+        "name": "Bicep-curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "a58f932c-7343-4814-98a7-375e13d22d45",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "8f0a5bcd-65d7-4ee1-ab1d-76fba4338d3a",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "a6abe32f-9dba-43fe-ac8e-cb6d681c2da7",
+        "name": "Shoulder shrug",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "f83a93af-9d1e-4be5-930a-b1626ae60a71",
+    "date": "2026-04-20",
+    "weightKg": "",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "1.13",
+    "treadmillMinutes": "15:00",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: - kgs | Treadmill: | B. 1.13km, 15:00, incline=6.0 | Front lat-pulldown (Arms & Back): 75lbs, 3, 12 | Machine chest press (Chest, Shoulders & Triceps): 45lbs, 3, 12 | Seated Row (teres major): 55lbs, 3, 15 | Bicep-curl: 15lbs, 3, 12 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 10lbs, 3, 12 | Shoulder shrug: 15lbs, 3, 12 | Single Arm Row: 15lbs, 3, 12 | Triceps extension: 10lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "7356d157-8dc7-4e66-8fcb-e34ccbd28f05",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "75",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "ce48d0db-87bd-482a-bbbd-f366c851ab05",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "6bb465a8-71b8-4dd8-8093-25675cf26f96",
+        "name": "Seated Row (teres major)",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "620009dd-332c-4f92-8438-deadaece0c15",
+        "name": "Bicep-curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "0534f3fc-b95b-4250-bfc5-48fb010538c7",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "b102754b-292b-465f-8076-7ae1584c6507",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "bedb6eb8-52d7-41a3-abe1-e3202a96233a",
+        "name": "Shoulder shrug",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "369bebed-c00c-4171-a827-1f54fea24e5f",
+        "name": "Single Arm Row",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "0032d530-90a1-4f26-ade9-93189241f96d",
+        "name": "Triceps extension",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "623d3493-5370-4b2c-a2e5-116ad2d5fb08",
+    "date": "2026-04-17",
+    "weightKg": "",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "",
+    "treadmillMinutes": "",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: - kgs | Treadmill: | B. -km, -:00, incline=6.0 | Front lat-pulldown (Arms & Back): 75lbs, 3, 12 | Machine chest press (Chest, Shoulders & Triceps): 45lbs, 3, 12 | Bicep-curl: 15lbs, 3, 12 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 10lbs, 3, 12 | Shoulder shrug: 15lbs, 3, 12 | Single Arm Row: 15lbs, 3, 12 | Triceps extension: 10lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "64b125ef-dbf4-4204-8034-61f6c844d404",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "75",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "2ddf64d8-65ce-4777-b506-ae5ebccfcf21",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "e395f3ae-ac82-4bbf-a8ea-535ee08a936c",
+        "name": "Bicep-curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "45a23da1-d532-459e-92f8-1d9a4bf9217c",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "b295b217-5a8d-4f61-bea6-04b0cbaf39d5",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "48683cd6-6f93-4bde-805c-52a05e61048b",
+        "name": "Shoulder shrug",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "0a421e5a-4aeb-4723-815f-1477cb269ef3",
+        "name": "Single Arm Row",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "f0e4af85-29e4-48aa-bf4e-1ca2f301fecf",
+        "name": "Triceps extension",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "90710be7-87f8-4c46-aafb-2e263dfe1909",
+    "date": "2026-04-15",
+    "weightKg": "",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Custom",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.85",
+    "treadmillMinutes": "10:15",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: - kgs | Treadmill: | B. 0.85km, 10:15, incline=6.0 | Dumbbell Lateral Raise: 10lbs, 3, 12 | Leg curl (Glutes & Hamstrings): 20lbs, 3, 12 | Leg extension (Quadriceps): 40lbs, 3, 12 | Reverse Lunge: 0lbs, 3, 10",
+    "exercises": [
+      {
+        "id": "eec74a37-b3e0-40b6-b433-a52b3b43ff41",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "250fd260-b21b-43f5-9742-d89abb71ddbb",
+        "name": "Leg curl (Glutes & Hamstrings)",
+        "weight": "20",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "70a6ff3b-1bef-47c1-9034-eab634cba1df",
+        "name": "Leg extension (Quadriceps)",
+        "weight": "40",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "d23ae0b8-003b-4943-b9f5-8cac35d1bbad",
+        "name": "Reverse Lunge",
+        "weight": "0",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "10",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "ed459ffb-5c35-41f2-864a-6d7ea73bba5d",
+    "date": "2026-04-14",
+    "weightKg": "92.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "1.25",
+    "treadmillMinutes": "15:00",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 92.0kgs | Treadmill: | B. 1.25km, 15:00, incline=6.0 | Front lat-pulldown (Arms & Back): 75lbs, 3, 12 | Machine chest press (Chest, Shoulders & Triceps): 45lbs, 3, 12 | Bicep-curl: 15lbs, 3, 12 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 10lbs, 3, 12 | Single Arm Row: 15lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "df82f334-6467-4a0f-a900-ec69b2e3c303",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "75",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "c33b46ef-52ac-4990-b0f0-4b7a2daa1abc",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "78b58c02-41df-4566-aa1e-f5442237a087",
+        "name": "Bicep-curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "19721593-c98c-4a6e-93e5-f9bd9c618d3c",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "a77daccf-eac2-4259-a4b1-11a918d39351",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "75031c3d-ffeb-41cf-be54-f0dd3c37a946",
+        "name": "Single Arm Row",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "5c534c4d-f943-410b-b534-b129ef8b068d",
+    "date": "2026-04-13",
+    "weightKg": "92.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "2.32",
+    "treadmillMinutes": "30:00",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 92.0kgs | Treadmill: | B. 2.32km, 30:00, incline=6.0 | Front lat-pulldown (Arms & Back): 75lbs, 3, 12 | Machine chest press (Chest, Shoulders & Triceps): 45lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "1537601a-595d-4577-92d0-3a384bed1ff5",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "75",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "8f2ddf39-c65b-43f4-a385-53e33544c06e",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "af8b05dc-1dfd-40ef-86d9-b1a68a0c0140",
+    "date": "2026-04-10",
+    "weightKg": "91.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "1.00",
+    "treadmillMinutes": "11:32",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 91.0kgs | Treadmill: | B. 1.00km, 11:32, incline=6.0 | Front lat-pulldown (Arms & Back): 75lbs, 3, 12 | Machine chest press (Chest, Shoulders & Triceps): 45lbs, 3, 12 | Seated Row (teres major): 55lbs, 3, 15 | Bicep-curl: 15lbs, 3, 12 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 10lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "f2a192ea-c016-4ec1-b38f-7b33eb28a040",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "75",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "c2152b9c-034e-4b3e-96cf-ddc352bf0bfb",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "a4cfe9a6-c5a4-4855-897b-f41f34eb3e81",
+        "name": "Seated Row (teres major)",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "9a1d103a-a247-4799-9adc-e274e694c2f0",
+        "name": "Bicep-curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "af85ec6e-9fee-46b9-a120-5806daf700ec",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "50766ef5-1e9a-4a68-bd3a-81c9b1a389a7",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "77d9da93-0a9f-4e27-aea5-da4e0c9288cd",
+    "date": "2026-04-08",
+    "weightKg": "92.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "1.00",
+    "treadmillMinutes": "11:58",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 92.0kgs | Treadmill: | B. 1.00km, 11:58, incline=6.0 | Front lat-pulldown (Arms & Back): 65lbs, 3, 15 | Machine chest press (Chest, Shoulders & Triceps): 40lbs, 3, 15 | Seated Row (teres major): 65lbs, 3, 12 | Bicep-curl: 15lbs, 3, 12 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 10lbs, 3, 12 | Single Arm Row: 15lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "950c72bd-ec48-4574-91bb-28ed5be61e71",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "74495fe7-e6ac-447c-8781-a27fa9608b95",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "40",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "ecda85b6-e39c-41a5-b7fd-c44d088fbf73",
+        "name": "Seated Row (teres major)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "1eddd330-317b-444b-82f2-5b2d641f8750",
+        "name": "Bicep-curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "b471c3c9-e621-4452-8816-cc520f5394ac",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "66e2a652-2fc2-42b0-965f-ba484f3d20e3",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "4c0e7afa-892e-42bb-bd06-df5c8e8134df",
+        "name": "Single Arm Row",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "8854b604-efdb-4aab-a822-815be7476e37",
+    "date": "2026-04-06",
+    "weightKg": "",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "1.50",
+    "treadmillMinutes": "20:05",
+    "treadmillIncline": "6.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: - kgs | Treadmill: | B. 1.50km, 20:05, incline=6.0 | Front lat-pulldown (Arms & Back): 65lbs, 3, 12 | Machine chest press (Chest, Shoulders & Triceps): 40lbs, 3, 12 | Seated Row (teres major): 65lbs, 3, 12 | Bicep-curl: 15lbs, 3, 12 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 10lbs, 3, 12 | Single Arm Row: 15lbs, 3, 12",
+    "exercises": [
+      {
+        "id": "da272e3f-db45-4211-9c74-5c2f81ed3942",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "37855b0b-3370-4fec-8543-668aa07a6403",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "40",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "63c1534d-71aa-40c8-a327-0b436e0febc7",
+        "name": "Seated Row (teres major)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "97418ef7-5eaa-4f13-a161-a2c77159578d",
+        "name": "Bicep-curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "3bd1f207-dda6-43f3-ac99-fc64f069b165",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "6f6b5dae-ec9c-4ed7-87cd-399f5e29be96",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "63162e9a-fc84-4ddc-a667-f804f29906ed",
+        "name": "Single Arm Row",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "96f13e62-0607-4699-8a55-9d6addc3403f",
+    "date": "2026-04-04",
+    "weightKg": "91.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.50",
+    "treadmillMinutes": "4:57",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 91.0kgs | Treadmill: | B. 0.50km, 4:57, incline=5.0 | Front lat-pulldown (Arms & Back): 65lbs, 3, 12 | Machine chest press (Chest, Shoulders & Triceps): 40lbs, 3, 12 | Seated Row (teres major): 65lbs, 3, 12 | Bicep-curl: 15lbs, 3, 12 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 10lbs, 3, 10",
+    "exercises": [
+      {
+        "id": "58ab64cb-f598-47d7-bd85-1dd8e22aa70c",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "e8a233c4-c6a1-4a3a-8d55-856684dc63b0",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "40",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "03b68980-577c-4827-9c98-dfc0c8cc624e",
+        "name": "Seated Row (teres major)",
+        "weight": "65",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "f1c3c45a-313e-4244-9d86-6601c4d9a7a4",
+        "name": "Bicep-curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "12",
+        "completedSets": 3
+      },
+      {
+        "id": "8b02eb91-65da-4665-adbe-1ee12ff49bf6",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "0bed1ce9-7a48-4b36-9bb7-76f565d3c63e",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "10",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "1e46d8c2-93e0-418f-a33b-b9d664413d28",
+    "date": "2026-04-03",
+    "weightKg": "89.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Lower",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.60",
+    "treadmillMinutes": "4:39",
+    "treadmillIncline": "0.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 89.0kgs | Treadmill: | B. 0.60km, 4:39, incline=0.0 | Leg curl (Glutes & Hamstrings): 15lbs, 3, 15 | Leg extension (Quadriceps): 35lbs, 3, 15 | Standing Calf-Raise: 5lbs, 3, 15 | Dumbbell Romanian deadlift: 5lbs, 3, 10",
+    "exercises": [
+      {
+        "id": "5c997d92-7300-4013-b8ad-47fc31d3c6f4",
+        "name": "Leg curl (Glutes & Hamstrings)",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "40ea619e-f3c7-46b5-82d9-1a5741342c2e",
+        "name": "Leg extension (Quadriceps)",
+        "weight": "35",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "eaa035f9-18b8-46e3-b506-3e9c61c41400",
+        "name": "Standing Calf-Raise",
+        "weight": "5",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "c6b49ec2-f8c2-4e23-898d-9af29a794e34",
+        "name": "Dumbbell Romanian deadlift",
+        "weight": "5",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "10",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "7667bf6c-9946-4906-9fa6-7cea1e0b77d3",
+    "date": "2026-04-02",
+    "weightKg": "89.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.60",
+    "treadmillMinutes": "5:07",
+    "treadmillIncline": "0.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 89.0kgs | Treadmill: | B. 0.60km, 5:07, incline=0.0 | Front lat-pulldown (Arms & Back): 55lbs, 3, 15 | Machine chest press (Chest, Shoulders & Triceps): 35lbs, 3, 15 | Seated Row (teres major): 50lbs, 3, 15 | Bicep-curl: 10lbs, 3, 15 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 5lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "5f2d52a7-f763-4a33-8f60-76e5e3008d02",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "96dd2a93-8f91-4e52-84bd-1042b1fb5dcd",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "35",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "708c265e-9cad-42b1-bc83-c181dcbcd60e",
+        "name": "Seated Row (teres major)",
+        "weight": "50",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "b14579cd-5b13-4f38-9d80-753a7fa9d68a",
+        "name": "Bicep-curl",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "2c5cee99-54a2-4d1b-b77e-834044373790",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "2a4e191b-8c65-4113-86a5-937b27f8c4aa",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "5",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "f82aea12-d340-4135-b35e-767e2889933b",
+    "date": "2026-03-31",
+    "weightKg": "89.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.50",
+    "treadmillMinutes": "5:47",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 89.0kgs | Treadmill: | B. 0.50km, 5:47, incline=5.0 | Front lat-pulldown (Arms & Back): 55lbs, 3, 15 | Machine chest press (Chest, Shoulders & Triceps): 30lbs, 3, 15 | Seated Row (teres major): 45lbs, 3, 15 | Bicep-curl: 10lbs, 3, 21 | Hammer curl: 15lbs, 3, 15 | Dumbbell Lateral Raise: 5lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "def95b96-3687-4620-8d20-0c7191a977bb",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "973ca101-547d-4ee1-b252-c4170e25a2cb",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "40a02ef0-79a3-4454-92cf-15e704a0622d",
+        "name": "Seated Row (teres major)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "fc1ae133-f947-4e79-9181-b91052f5a6a0",
+        "name": "Bicep-curl",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "21",
+        "completedSets": 3
+      },
+      {
+        "id": "a9c5b3b4-1c73-4bab-ad10-7ca8025e9e5d",
+        "name": "Hammer curl",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "f8173d8f-b4d9-41b7-9a8b-0d50b72608aa",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "5",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "50dc70a6-dce1-4aba-bd47-d29257686fea",
+    "date": "2026-03-23",
+    "weightKg": "90.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.51",
+    "treadmillMinutes": "5:50",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 90.0kgs | Treadmill: | A. 0.51km, 5:50, incline=5.0 | Front lat-pulldown (Arms & Back): 55lbs, 3, 15 | Machine chest press (Chest, Shoulders & Triceps): 30lbs, 3, 15 | Seated Row (teres major): 45lbs, 3, 15 | Bicep-curl: 10lbs, 3, 15 | Dumbbell Lateral Raise: 5lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "086e8d82-6e93-4b94-85b9-e5656f2a008e",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "8d165f2c-1383-44b7-bcf9-d2d47036a7c1",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "a6c88675-4db3-4996-b4d5-8d8cb5effbcd",
+        "name": "Seated Row (teres major)",
+        "weight": "45",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "51f38065-d4d6-4097-a14a-d74f716d006a",
+        "name": "Bicep-curl",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "b28c1d0e-e68a-4d2a-94f2-f4ca314cc535",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "5",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "39f7638a-a8d0-48d9-aa0d-a7e522a61c68",
+    "date": "2026-03-22",
+    "weightKg": "90.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Custom",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.51",
+    "treadmillMinutes": "5:50",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 90.0kgs | Treadmill: | A. 0.51km, 5:50, incline=5.0 | Front lat-pulldown (Arms & Back): 55lbs, 3, 15 | Machine chest press (Chest, Shoulders & Triceps): 30lbs, 3, 15 | Leg curl (Glutes & Hamstrings): 15lbs, 3, 10 | Leg extension (Quadriceps): 35lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "f9cc0f9c-d5fe-4fdb-92f5-fa33f7f9fe64",
+        "name": "Front lat-pulldown (Arms & Back)",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "c62c54cb-024d-4a4f-8d4c-507e2b91bd95",
+        "name": "Machine chest press (Chest, Shoulders & Triceps)",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "576c45ce-35e3-4421-976c-0b4f3512c93d",
+        "name": "Leg curl (Glutes & Hamstrings)",
+        "weight": "15",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "10",
+        "completedSets": 3
+      },
+      {
+        "id": "db78d993-b891-4d22-b829-ac4b1c228731",
+        "name": "Leg extension (Quadriceps)",
+        "weight": "35",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "432f108f-741d-4115-87bd-b532e49f11cd",
+    "date": "2026-03-19",
+    "weightKg": "89.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.51",
+    "treadmillMinutes": "5:50",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 89.0kgs | Treadmill: | A. 0.51km, 5:50, incline=5.0 | Front lat-pulldown: 55lbs, 3, 15 | Machine chest press: 30lbs, 3, 15 | Bicep-curl: 10lbs, 3, 15 | Dumbbell Lateral Raise: 5lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "80de3cb4-36d4-4d71-b4c2-00e5efc72b48",
+        "name": "Front lat-pulldown",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "502e5b0b-c680-4418-a9a2-8930cb716e15",
+        "name": "Machine chest press",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "a8353c70-746c-40fd-b3df-4f391c004576",
+        "name": "Bicep-curl",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "ceb4c153-c030-4b7b-9a69-ac62a676e434",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "5",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "911b2ecf-6deb-468e-82e7-d93860d2e934",
+    "date": "2026-03-16",
+    "weightKg": "90.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.51",
+    "treadmillMinutes": "5:50",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 90.0kgs | Treadmill: | A. 0.51km, 5:50, incline=5.0 | Front lat-pulldown: 55lbs, 3, 15 | Machine chest press: 30lbs, 3, 15 | Bicep-curl: 10lbs, 3, 15 | Dumbbell Lateral Raise: 5lbs, 3, 15 | Leg extension: 35lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "d525bee5-949f-4b1c-bd57-29d4ae2eb31f",
+        "name": "Front lat-pulldown",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "f04dca1e-0f75-4fbf-9c27-ab697ad35dda",
+        "name": "Machine chest press",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "acc8017a-a705-4811-ab3d-abffbea08a1b",
+        "name": "Bicep-curl",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "fa3e3195-04d5-429f-932c-a6d876340a9c",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "5",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "4897257d-929d-4945-a120-ee49d434931b",
+        "name": "Leg extension",
+        "weight": "35",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "821b756d-c805-4bf3-8a47-95e834213c34",
+    "date": "2026-03-13",
+    "weightKg": "90.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.41",
+    "treadmillMinutes": "5:00",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 90.0kgs | Treadmill: | A. 0.41km, 5:00, incline=5.0 | Front lat-pulldown: 55lbs, 3, 15 | Machine chest press: 30lbs, 3, 15 | Bicep-curl: 10lbs, 3, 15 | Dumbbell Lateral Raise: 5lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "536cfcf3-b55e-4449-9834-6981480bc474",
+        "name": "Front lat-pulldown",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "c59384c5-7a4e-407c-a8d4-b33c0bc7c215",
+        "name": "Machine chest press",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "2db2ed02-c595-44f0-b07e-4dec8886ff95",
+        "name": "Bicep-curl",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "b95c9b0d-88f5-44b5-87cf-61d4939b7cbd",
+        "name": "Dumbbell Lateral Raise",
+        "weight": "5",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "dff8fdd0-9c0d-4f38-9bfb-c9903657d6d5",
+    "date": "2026-03-12",
+    "weightKg": "90.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.5",
+    "treadmillMinutes": "6:00",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 90.0kgs | Treadmill: | A. 0.5km, 6:00, incline=5.0 | Front lat-pulldown: 55lbs, 3, 15 | Machine chest press: 30lbs, 3, 15 | Bicep-curl: 10lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "1642acd4-6b62-475c-8fe7-5923667a7b65",
+        "name": "Front lat-pulldown",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "729f6d1e-ec9e-4ec1-8746-319004bdcfd5",
+        "name": "Machine chest press",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "9ca2a0b4-0b6b-422f-b4e0-ac08dc81dbb4",
+        "name": "Bicep-curl",
+        "weight": "10",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "4bd0ae1e-0492-4b4f-b25e-6eee3f509f1a",
+    "date": "2026-03-09",
+    "weightKg": "90.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Cardio",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.84",
+    "treadmillMinutes": "10:00",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 90.0kgs | Treadmill: | A. 0.84km, 10:00, incline=5.0",
+    "exercises": [],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  },
+  {
+    "id": "146ecb53-dc3b-4e68-82c0-852897b6b471",
+    "date": "2026-03-07",
+    "weightKg": "90.0",
+    "waistSizeCm": "",
+    "sleepHours": "",
+    "workoutType": "Upper",
+    "gymTime": "",
+    "preWorkout": "",
+    "postGymEnergy": "",
+    "treadmillDistanceKm": "0.81",
+    "treadmillMinutes": "10:00",
+    "treadmillIncline": "5.0",
+    "notes": "Imported from historical raw log. Raw entry: Weight: 90.0kgs | Treadmill: | A. 0.81km, 10:00, incline=5.0 | Front lat-pulldown: 55lbs, 3, 15 | Leg extension: 40lbs, 3, 15 | Machine chest press: 30lbs, 3, 15",
+    "exercises": [
+      {
+        "id": "b01f316f-f246-4a84-bc48-c9ba025186e8",
+        "name": "Front lat-pulldown",
+        "weight": "55",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "c2f73811-7a7b-4971-a123-f994f6b60852",
+        "name": "Leg extension",
+        "weight": "40",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      },
+      {
+        "id": "d1eb9272-e874-403e-b5d5-515fe93896cb",
+        "name": "Machine chest press",
+        "weight": "30",
+        "unit": "lbs",
+        "sets": "3",
+        "reps": "15",
+        "completedSets": 3
+      }
+    ],
+    "meals": [],
+    "createdAt": "2026-04-27T18:50:49Z",
+    "updatedAt": "2026-04-27T18:50:49Z"
+  }
+]
