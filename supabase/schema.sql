@@ -14,7 +14,7 @@ create table if not exists public.daily_logs (
   workout_type text not null default 'Custom',
   gym_time text,
   pre_workout text,
-  post_gym_energy integer check (post_gym_energy between 1 and 10),
+  post_gym_energy integer check (post_gym_energy is null or (post_gym_energy between 0 and 10)),
   treadmill_distance_km numeric(6,2),
   treadmill_minutes numeric(6,2),
   treadmill_incline numeric(4,1),
@@ -26,6 +26,16 @@ create table if not exists public.daily_logs (
 
 alter table public.daily_logs
 add column if not exists waist_size_cm numeric(5,2);
+
+-- Existing projects may already have the older 1-10 check constraint.
+-- Replace it so missing optional values stay NULL and a genuine 0/10 score is allowed.
+alter table public.daily_logs
+  drop constraint if exists daily_logs_post_gym_energy_check;
+
+alter table public.daily_logs
+  add constraint daily_logs_post_gym_energy_check
+  check (post_gym_energy is null or (post_gym_energy between 0 and 10));
+
 
 create table if not exists public.exercise_entries (
   id uuid primary key default gen_random_uuid(),

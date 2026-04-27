@@ -451,51 +451,6 @@ label {
 
 .exercise-card,
 .meal-card,
-
-.coverage-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.coverage-grid article {
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.055);
-}
-
-.coverage-grid strong,
-.coverage-grid span {
-  display: block;
-}
-
-.coverage-grid strong {
-  margin-bottom: 8px;
-  font-size: 1.75rem;
-  line-height: 1;
-  letter-spacing: -0.05em;
-}
-
-.coverage-grid span {
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.file-import {
-  display: grid;
-  gap: 8px;
-}
-
-.file-import input {
-  padding: 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.24);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--muted-strong);
-}
-
 .history-row {
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -558,7 +513,7 @@ label {
 
 .trend-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -570,67 +525,14 @@ label {
 }
 
 .trend-strip span,
-.trend-strip strong,
-.trend-strip small {
+.trend-strip strong {
   display: block;
 }
 
 .trend-strip strong {
   margin-top: 8px;
-  font-size: 1.45rem;
+  font-size: 1.6rem;
   letter-spacing: -0.05em;
-}
-
-.trend-strip small {
-  margin-top: 8px;
-  color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.35;
-}
-
-
-.coverage-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.coverage-grid article {
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.055);
-}
-
-.coverage-grid strong,
-.coverage-grid span {
-  display: block;
-}
-
-.coverage-grid strong {
-  margin-bottom: 8px;
-  font-size: 1.75rem;
-  line-height: 1;
-  letter-spacing: -0.05em;
-}
-
-.coverage-grid span {
-  color: var(--muted);
-  font-size: 0.86rem;
-}
-
-.file-import {
-  display: grid;
-  gap: 8px;
-}
-
-.file-import input {
-  padding: 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.24);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.055);
-  color: var(--muted-strong);
 }
 
 .history-row {
@@ -1011,4 +913,44 @@ label {
   .auth-actions {
     grid-template-columns: 1fr;
   }
+}
+
+.file-import-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0 14px;
+}
+
+.file-import-row span {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.file-import-button {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: var(--text-strong);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.9rem;
+  font-weight: 700;
+  gap: 8px;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.file-import-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.file-import-button input {
+  display: none;
 }
