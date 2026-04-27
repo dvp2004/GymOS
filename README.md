@@ -1,73 +1,45 @@
-# React + TypeScript + Vite
+# GymOS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Personal gym, nutrition, body-weight tracking and AI feedback PWA.
 
-Currently, two official plugins are available:
+## Current build status
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+This is the first real app shell:
 
-## React Compiler
+- Modern mobile-first React/Vite interface
+- Daily weight, sleep, workout and food logging
+- Exercise set tracker
+- Treadmill/cardio logging
+- Recent trend cards
+- Coach prompt builder
+- JSON export
+- Local browser persistence
+- PWA manifest and service worker
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Important limitation
 
-## Expanding the ESLint configuration
+The current version saves data in the browser using local storage. That is good enough for the first UI prototype, but not enough for long-term use across iPhone and PC.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Next build phase: Supabase authentication and database sync.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Run locally
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Build
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+## Roadmap
+
+1. Supabase Auth
+2. Supabase Postgres sync
+3. Serverless AI feedback endpoint
+4. Better trend charts
+5. CSV export
+6. iOS icon polish

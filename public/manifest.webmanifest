@@ -1,0 +1,20 @@
+{
+  "name": "GymOS",
+  "short_name": "GymOS",
+  "description": "Personal gym, nutrition, weight tracking and AI feedback PWA.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
+  "categories": ["health", "fitness", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/gymos-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
