@@ -406,9 +406,10 @@ function mapCloudRowsToLogs(dailyRows: DailyLogRow[], exerciseRows: ExerciseRow[
 }
 
 async function fetchCloudLogs(userId: string) {
-  if (!supabase) return []
+  const client = supabase
+  if (!client) return []
 
-  const { data: dailyRows, error: dailyError } = await supabase
+  const { data: dailyRows, error: dailyError } = await client
     .from('daily_logs')
     .select('*')
     .eq('user_id', userId)
@@ -422,8 +423,8 @@ async function fetchCloudLogs(userId: string) {
 
   const [{ data: exerciseRows, error: exerciseError }, { data: mealRows, error: mealError }] =
     await Promise.all([
-      supabase.from('exercise_entries').select('*').in('daily_log_id', ids).order('position', { ascending: true }),
-      supabase.from('meal_entries').select('*').in('daily_log_id', ids).order('position', { ascending: true }),
+      client.from('exercise_entries').select('*').in('daily_log_id', ids).order('position', { ascending: true }),
+      client.from('meal_entries').select('*').in('daily_log_id', ids).order('position', { ascending: true }),
     ])
 
   if (exerciseError) throw exerciseError
@@ -434,11 +435,12 @@ async function fetchCloudLogs(userId: string) {
 
 async function saveLogToCloud(log: DailyLog, userId: string) {
   if (!supabase) throw new Error('Supabase is not configured.')
+  const client = supabase!
 
   async function saveDailyLog(includeWaistSize: boolean) {
     const payload = buildDailyLogPayload(log, userId, includeWaistSize)
 
-    const { data: existingRows, error: lookupError } = await supabase
+    const { data: existingRows, error: lookupError } = await client
       .from('daily_logs')
       .select('id')
       .eq('user_id', userId)
@@ -449,7 +451,7 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
 
     if (existingRows && existingRows.length > 0) {
       const existingId = (existingRows[0] as { id: string }).id
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('daily_logs')
         .update(payload)
         .eq('id', existingId)
@@ -465,7 +467,7 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
       ...(isUuid(log.id) ? { id: log.id } : {}),
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('daily_logs')
       .insert(insertPayload)
       .select('*')
@@ -490,15 +492,15 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
   const cloudLogId = savedRow.id
 
   const [{ error: exerciseDeleteError }, { error: mealDeleteError }] = await Promise.all([
-    supabase.from('exercise_entries').delete().eq('daily_log_id', cloudLogId),
-    supabase.from('meal_entries').delete().eq('daily_log_id', cloudLogId),
+    client.from('exercise_entries').delete().eq('daily_log_id', cloudLogId),
+    client.from('meal_entries').delete().eq('daily_log_id', cloudLogId),
   ])
 
   if (exerciseDeleteError) throw exerciseDeleteError
   if (mealDeleteError) throw mealDeleteError
 
   if (log.exercises.length) {
-    const { error } = await supabase.from('exercise_entries').insert(
+    const { error } = await client.from('exercise_entries').insert(
       log.exercises.map((exercise, index) => ({
         id: isUuid(exercise.id) ? exercise.id : makeId(),
         daily_log_id: cloudLogId,
@@ -516,7 +518,7 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
   }
 
   if (log.meals.length) {
-    const { error } = await supabase.from('meal_entries').insert(
+    const { error } = await client.from('meal_entries').insert(
       log.meals.map((meal, index) => ({
         id: isUuid(meal.id) ? meal.id : makeId(),
         daily_log_id: cloudLogId,
@@ -644,13 +646,14 @@ function App() {
   useEffect(() => {
     if (!supabase || !user || forceLocalMode) return
 
+    const activeUser = user
     let cancelled = false
 
     async function loadCloud() {
       try {
         setSyncState('syncing')
         setSyncError('')
-        const cloudLogs = await fetchCloudLogs(user.id)
+        const cloudLogs = await fetchCloudLogs(activeUser.id)
         if (cancelled) return
         setLogs(cloudLogs)
         setSyncState('synced')
@@ -699,7 +702,8 @@ function App() {
       setSaveState('idle')
       setSyncError('')
 
-      const finalDraft = cloudMode ? await saveLogToCloud(savedDraft, user.id) : savedDraft
+      const activeUser = cloudMode ? user : null
+      const finalDraft = activeUser ? await saveLogToCloud(savedDraft, activeUser.id) : savedDraft
 
       setLogs((current) => sortLogs([finalDraft, ...current.filter((log) => log.date !== finalDraft.date)]))
       setSyncState(cloudMode ? 'synced' : 'local')
@@ -714,13 +718,15 @@ function App() {
   async function syncLocalToCloud() {
     if (!user || !supabase) return
 
+    const activeUser = user
+
     try {
       setSyncState('syncing')
       setSyncError('')
       const synced: DailyLog[] = []
 
       for (const log of sortLogs(logs).reverse()) {
-        synced.push(await saveLogToCloud(log, user.id))
+        synced.push(await saveLogToCloud(log, activeUser.id))
       }
 
       setLogs(sortLogs(synced))
@@ -745,12 +751,14 @@ function App() {
 
     const normalised = items.map(normaliseImportedLog)
 
-    if (cloudMode && user) {
+    const activeUser = cloudMode ? user : null
+
+    if (activeUser) {
       setSyncState('syncing')
       const synced: DailyLog[] = []
       for (const log of normalised) {
         try {
-          synced.push(await saveLogToCloud(log, user.id))
+          synced.push(await saveLogToCloud(log, activeUser.id))
         } catch (error) {
           throw new Error(`Import failed on ${log.date}: ${getErrorMessage(error)}`)
         }
