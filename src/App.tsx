@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { ChangeEvent, FormEvent } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from './lib/supabase'
 import './App.css'
@@ -437,6 +437,123 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
 }
 
 
+
+function cleanImportedString(value: unknown) {
+  if (value === null || value === undefined) return ''
+  const text = String(value).trim()
+  if (!text || text === '-' || text.toLowerCase() === 'na' || text.toLowerCase() === 'n/a') return ''
+  if (/^-\s*(kgs?|km|cm|lbs?)?$/i.test(text)) return ''
+  if (text === '-:00') return ''
+  return text
+}
+
+function inferWorkoutType(exercises: ExerciseEntry[], treadmillDistanceKm: string, treadmillMinutes: string): WorkoutType {
+  const lowerTerms = ['squat', 'lunge', 'leg curl', 'leg extension', 'calf', 'romanian', 'deadlift', 'plank']
+  const upperTerms = ['lat', 'pulldown', 'chest', 'shoulder', 'tricep', 'bicep', 'curl', 'row', 'raise', 'shrug', 'press', 'extension']
+
+  const lowerCount = exercises.filter((exercise) => lowerTerms.some((term) => exercise.name.toLowerCase().includes(term))).length
+  const upperCount = exercises.filter((exercise) => upperTerms.some((term) => exercise.name.toLowerCase().includes(term))).length
+
+  if (exercises.length && lowerCount > 0 && upperCount === 0) return 'Lower'
+  if (exercises.length && upperCount > 0 && lowerCount === 0) return 'Upper'
+  if (exercises.length && upperCount > lowerCount * 2) return 'Upper'
+  if (exercises.length && lowerCount > upperCount) return 'Lower'
+  if (exercises.length) return 'Custom'
+  if (treadmillDistanceKm || treadmillMinutes) return 'Cardio'
+  return 'Custom'
+}
+
+function parseHistoricalTextLogs(raw: string): DailyLog[] {
+  const datePattern = /^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})\s*$/gm
+  const matches = [...raw.matchAll(datePattern)]
+
+  return matches.map((match, index) => {
+    const day = Number(match[1])
+    const month = Number(match[2])
+    const yearRaw = Number(match[3])
+    const year = yearRaw < 100 ? 2000 + yearRaw : yearRaw
+    const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const blockStart = (match.index ?? 0) + match[0].length
+    const blockEnd = index + 1 < matches.length ? matches[index + 1].index ?? raw.length : raw.length
+    const lines = raw.slice(blockStart, blockEnd).split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+    const base = createEmptyLog(date)
+    const exercises: ExerciseEntry[] = []
+    let weightKg = ''
+    let treadmillDistanceKm = ''
+    let treadmillMinutes = ''
+    let treadmillIncline = ''
+    const parserNotes: string[] = []
+
+    for (const line of lines) {
+      if (/^weight:/i.test(line)) {
+        const weightMatch = line.match(/weight:\s*([\d.]+|-)/i)
+        weightKg = cleanImportedString(weightMatch?.[1])
+        continue
+      }
+
+      if (/^treadmill:?$/i.test(line)) continue
+
+      const treadmillMatch = line.match(/^[A-Z]\.?\s*([\d.]+|-)\s*km,\s*([\d:]+|-:00|-),\s*incline\s*=\s*([\d.]+|-)/i)
+      if (treadmillMatch) {
+        treadmillDistanceKm = cleanImportedString(treadmillMatch[1])
+        treadmillMinutes = cleanImportedString(treadmillMatch[2])
+        treadmillIncline = cleanImportedString(treadmillMatch[3])
+        continue
+      }
+
+      if (!line.includes(':')) {
+        parserNotes.push(`Unparsed line: ${line}`)
+        continue
+      }
+
+      const [exerciseName, restRaw] = line.split(/:(.*)/s)
+      const exerciseMatch = restRaw.trim().match(/^([\d.]+)?\s*(lbs|kg)?\s*,\s*([^,]*)\s*,\s*(.+)$/i)
+
+      if (!exerciseMatch) {
+        parserNotes.push(`Unparsed line: ${line}`)
+        continue
+      }
+
+      const sets = cleanImportedString(exerciseMatch[3])
+      const completedSets = toNullableInteger(sets) ?? 0
+      const weight = cleanImportedString(exerciseMatch[1])
+      const unit = normaliseExerciseUnit(exerciseMatch[2] ?? (weight ? 'lbs' : 'bodyweight'))
+
+      exercises.push({
+        id: makeId(),
+        name: cleanImportedString(exerciseName),
+        weight,
+        unit,
+        sets,
+        reps: cleanImportedString(exerciseMatch[4]),
+        completedSets,
+      })
+    }
+
+    const rawNote = `Imported from historical raw log. Raw entry: ${lines.join(' | ')}`
+    const notes = [...parserNotes, rawNote].join('\n')
+
+    return {
+      ...base,
+      weightKg,
+      waistSizeCm: '',
+      sleepHours: '',
+      workoutType: inferWorkoutType(exercises, treadmillDistanceKm, treadmillMinutes),
+      gymTime: '',
+      preWorkout: '',
+      postGymEnergy: '',
+      treadmillDistanceKm,
+      treadmillMinutes,
+      treadmillIncline,
+      notes,
+      exercises,
+      meals: [],
+      updatedAt: new Date().toISOString(),
+    }
+  })
+}
+
+
 function normaliseImportedLog(item: unknown): DailyLog {
   if (!item || typeof item !== 'object') {
     throw new Error('Import failed: every item must be an object.')
@@ -454,12 +571,12 @@ function normaliseImportedLog(item: unknown): DailyLog {
         const entry = exercise as Partial<ExerciseEntry>
         return {
           id: typeof entry.id === 'string' ? entry.id : makeId(),
-          name: typeof entry.name === 'string' ? entry.name : '',
-          weight: typeof entry.weight === 'string' ? entry.weight : '',
+          name: cleanImportedString(entry.name),
+          weight: cleanImportedString(entry.weight),
           unit: normaliseExerciseUnit(typeof entry.unit === 'string' ? entry.unit : null),
-          sets: typeof entry.sets === 'string' ? entry.sets : '',
-          reps: typeof entry.reps === 'string' ? entry.reps : '',
-          completedSets: typeof entry.completedSets === 'number' ? entry.completedSets : 0,
+          sets: cleanImportedString(entry.sets),
+          reps: cleanImportedString(entry.reps),
+          completedSets: typeof entry.completedSets === 'number' ? entry.completedSets : toNullableInteger(cleanImportedString(entry.sets)) ?? 0,
         }
       })
     : []
@@ -481,16 +598,16 @@ function normaliseImportedLog(item: unknown): DailyLog {
   return {
     ...base,
     id: typeof source.id === 'string' ? source.id : base.id,
-    weightKg: typeof source.weightKg === 'string' ? source.weightKg : source.weightKg == null ? '' : String(source.weightKg),
-    waistSizeCm: typeof source.waistSizeCm === 'string' ? source.waistSizeCm : source.waistSizeCm == null ? '' : String(source.waistSizeCm),
-    sleepHours: typeof source.sleepHours === 'string' ? source.sleepHours : source.sleepHours == null ? '' : String(source.sleepHours),
+    weightKg: cleanImportedString(source.weightKg),
+    waistSizeCm: cleanImportedString(source.waistSizeCm),
+    sleepHours: cleanImportedString(source.sleepHours),
     workoutType: normaliseWorkoutType(typeof source.workoutType === 'string' ? source.workoutType : null),
-    gymTime: typeof source.gymTime === 'string' ? source.gymTime : '',
-    preWorkout: typeof source.preWorkout === 'string' ? source.preWorkout : '',
-    postGymEnergy: typeof source.postGymEnergy === 'string' ? source.postGymEnergy : source.postGymEnergy == null ? '' : String(source.postGymEnergy),
-    treadmillDistanceKm: typeof source.treadmillDistanceKm === 'string' ? source.treadmillDistanceKm : source.treadmillDistanceKm == null ? '' : String(source.treadmillDistanceKm),
-    treadmillMinutes: typeof source.treadmillMinutes === 'string' ? source.treadmillMinutes : source.treadmillMinutes == null ? '' : String(source.treadmillMinutes),
-    treadmillIncline: typeof source.treadmillIncline === 'string' ? source.treadmillIncline : source.treadmillIncline == null ? '' : String(source.treadmillIncline),
+    gymTime: cleanImportedString(source.gymTime),
+    preWorkout: cleanImportedString(source.preWorkout),
+    postGymEnergy: cleanImportedString(source.postGymEnergy),
+    treadmillDistanceKm: cleanImportedString(source.treadmillDistanceKm),
+    treadmillMinutes: cleanImportedString(source.treadmillMinutes),
+    treadmillIncline: cleanImportedString(source.treadmillIncline),
     notes: typeof source.notes === 'string' ? source.notes : '',
     exercises,
     meals,
@@ -632,18 +749,30 @@ function App() {
   }
 
   async function importLogsFromJson(raw: string) {
-    let parsed: unknown
+    const trimmed = raw.trim()
+    if (!trimmed) throw new Error('Import failed: paste JSON or dated raw logs first.')
 
-    try {
-      parsed = JSON.parse(raw)
-    } catch {
-      throw new Error('Import failed: this is not valid JSON.')
+    let normalised: DailyLog[]
+
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      let parsed: unknown
+
+      try {
+        parsed = JSON.parse(trimmed)
+      } catch {
+        throw new Error('Import failed: this looks like JSON, but it is not valid JSON.')
+      }
+
+      const items = Array.isArray(parsed) ? parsed : [parsed]
+      if (!items.length) throw new Error('Import failed: the JSON array is empty.')
+
+      normalised = items.map(normaliseImportedLog)
+    } else {
+      normalised = parseHistoricalTextLogs(trimmed)
+      if (!normalised.length) {
+        throw new Error('Import failed: no dated logs were found. Expected dates like 27.4.26 on their own line.')
+      }
     }
-
-    const items = Array.isArray(parsed) ? parsed : [parsed]
-    if (!items.length) throw new Error('Import failed: the JSON array is empty.')
-
-    const normalised = items.map(normaliseImportedLog)
 
     if (cloudMode && user) {
       setSyncState('syncing')
@@ -1079,7 +1208,7 @@ function TodayView({
   const metrics: Metric[] = [
     { label: 'Today', value: draft.weightKg ? `${draft.weightKg} kg` : 'No weigh-in', detail: 'Log first, judge trend later' },
     { label: 'Waist', value: draft.waistSizeCm ? `${draft.waistSizeCm} cm` : 'Optional', detail: 'Useful when weight stalls' },
-    { label: '7-day avg', value: formatKg(stats.sevenDayAverage), detail: stats.weightDeltaText },
+    { label: '7-day avg', value: formatKg(stats.sevenDayAverage), detail: `${stats.sevenDayWeightSamples} weigh-in sample${stats.sevenDayWeightSamples === 1 ? '' : 's'}` },
     { label: 'Gym streak', value: `${stats.trainingDaysLast7}/7`, detail: 'Days with training logged' },
     { label: 'Post-gym energy', value: draft.postGymEnergy ? `${draft.postGymEnergy}/10` : '—', detail: 'Fatigue signal, not decoration' },
   ]
@@ -1441,9 +1570,24 @@ function TrendsView({
       setImportMessage('Importing…')
       const count = await importLogsFromJson(importText)
       setImportText('')
-      setImportMessage(`Imported ${count} log${count === 1 ? '' : 's'}.`)
+      setImportMessage(`Imported ${count} log${count === 1 ? '' : 's'}. Existing dates were updated, not duplicated.`)
     } catch (error) {
       setImportMessage(error instanceof Error ? error.message : 'Import failed.')
+    }
+  }
+
+  async function handleFileImport(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      setImportText(text)
+      setImportMessage('File loaded. Review it, then click Import logs.')
+    } catch {
+      setImportMessage('Could not read that file.')
+    } finally {
+      event.target.value = ''
     }
   }
 
@@ -1462,28 +1606,76 @@ function TrendsView({
           </div>
           <span className="status-pill">{logs.length} logs saved</span>
         </div>
+
         <div className="trend-strip">
           <div>
-            <span>7-day average</span>
+            <span>7-day weight avg</span>
             <strong>{formatKg(stats.sevenDayAverage)}</strong>
+            <small>{stats.sevenDayWeightSamples} valid weigh-in{stats.sevenDayWeightSamples === 1 ? '' : 's'}</small>
           </div>
           <div>
-            <span>14-day average</span>
+            <span>14-day weight avg</span>
             <strong>{formatKg(stats.fourteenDayAverage)}</strong>
+            <small>{stats.fourteenDayWeightSamples} valid weigh-in{stats.fourteenDayWeightSamples === 1 ? '' : 's'}</small>
+          </div>
+          <div>
+            <span>Measured weight change</span>
+            <strong>{stats.weightDeltaText}</strong>
+            <small>Uses measured entries only</small>
           </div>
           <div>
             <span>Latest waist</span>
             <strong>{latestWaist ? `${latestWaist} cm` : '—'}</strong>
+            <small>{stats.waistCount} waist log{stats.waistCount === 1 ? '' : 's'}</small>
           </div>
           <div>
-            <span>Cardio last 7</span>
+            <span>Training last 7 days</span>
+            <strong>{stats.trainingDaysLast7}/7</strong>
+            <small>calendar days, not last 7 logs</small>
+          </div>
+          <div>
+            <span>Cardio last 7 days</span>
             <strong>{stats.cardioMinutesLast7} min</strong>
+            <small>{stats.cardioSessionsLast7} treadmill log{stats.cardioSessionsLast7 === 1 ? '' : 's'}</small>
           </div>
           <div>
             <span>Avg energy</span>
             <strong>{stats.averageEnergy === null ? '—' : `${stats.averageEnergy.toFixed(1)}/10`}</strong>
+            <small>{stats.averageEnergySamples} energy sample{stats.averageEnergySamples === 1 ? '' : 's'}</small>
           </div>
         </div>
+      </section>
+
+      <section className="panel span-2">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Data quality</p>
+            <h3>What the app can actually trust</h3>
+          </div>
+        </div>
+
+        <div className="coverage-grid">
+          <article>
+            <strong>{stats.logCount}</strong>
+            <span>Total dated logs</span>
+          </article>
+          <article>
+            <strong>{stats.weightCount}</strong>
+            <span>Weight entries</span>
+          </article>
+          <article>
+            <strong>{stats.treadmillCount}</strong>
+            <span>Treadmill entries</span>
+          </article>
+          <article>
+            <strong>{stats.exerciseCount}</strong>
+            <span>Exercise rows</span>
+          </article>
+        </div>
+
+        <p className="helper-copy">
+          Blank values are ignored in averages. A missing weight, waist, treadmill time or energy score will not be counted as zero, because that would corrupt the trend.
+        </p>
       </section>
 
       <section className="panel span-2 form-panel">
@@ -1494,28 +1686,23 @@ function TrendsView({
           </div>
         </div>
         <p className="helper-copy">
-          Paste a JSON array of logs. Date is the only required field because it identifies the day; every fitness field can be blank.
+          Paste a JSON array or your raw dated gym text. Date is the only required field. A dash is treated as unavailable, not zero.
         </p>
+
+        <label className="file-import">
+          Upload JSON or raw .txt file
+          <input type="file" accept=".json,.txt,application/json,text/plain" onChange={handleFileImport} />
+        </label>
+
         <textarea
           className="import-box"
-          placeholder={`[
-  {
-    "date": "2026-04-08",
-    "weightKg": "92",
-    "waistSizeCm": "",
-    "sleepHours": "",
-    "workoutType": "Upper",
-    "gymTime": "10:15-11:45",
-    "preWorkout": "2 bananas + latte",
-    "postGymEnergy": "3",
-    "treadmillDistanceKm": "1.00",
-    "treadmillMinutes": "11:58",
-    "treadmillIncline": "6.0",
-    "notes": "Felt tired after gym",
-    "exercises": [],
-    "meals": []
-  }
-]`}
+          placeholder={`27.4.26
+Weight: - kgs
+Treadmill:
+B. -km, -:00, incline=6.0
+Machine Front lat-pulldown: 85lbs, 3, 12
+
+or paste a JSON array exported from GymOS`}
           value={importText}
           onChange={(event) => setImportText(event.target.value)}
         />
@@ -1557,6 +1744,7 @@ function TrendsView({
     </div>
   )
 }
+
 
 function CoachView({
   coachInsight,
@@ -1609,32 +1797,77 @@ function CoachView({
   )
 }
 
+function parseDate(value: string) {
+  return new Date(`${value}T00:00:00`)
+}
+
+function addDays(date: Date, days: number) {
+  const copy = new Date(date)
+  copy.setDate(copy.getDate() + days)
+  return copy
+}
+
+function logsInLastCalendarDays(logs: DailyLog[], days: number) {
+  const sorted = sortLogs(logs)
+  if (!sorted.length) return []
+
+  const latest = parseDate(sorted[0].date)
+  const earliest = addDays(latest, -(days - 1))
+
+  return sorted.filter((log) => {
+    const date = parseDate(log.date)
+    return date >= earliest && date <= latest
+  })
+}
+
+function validNumberValues(values: string[]) {
+  return values.map(safeNumber).filter((value): value is number => value !== null)
+}
+
 function buildStats(logs: DailyLog[]) {
   const sorted = sortLogs(logs)
   const weights = getWeightValues(sorted)
-  const sevenWeights = weights.slice(0, 7).map((entry) => entry.value)
-  const fourteenWeights = weights.slice(0, 14).map((entry) => entry.value)
+  const sevenWindow = logsInLastCalendarDays(sorted, 7)
+  const fourteenWindow = logsInLastCalendarDays(sorted, 14)
+  const thirtyWindow = logsInLastCalendarDays(sorted, 30)
+  const sevenWeights = validNumberValues(sevenWindow.map((log) => log.weightKg))
+  const fourteenWeights = validNumberValues(fourteenWindow.map((log) => log.weightKg))
   const sevenDayAverage = average(sevenWeights)
   const fourteenDayAverage = average(fourteenWeights)
-  const latestWeight = weights[0]?.value ?? null
-  const oldestRecentWeight = weights[Math.min(weights.length - 1, 6)]?.value ?? null
+  const recentMeasuredWeights = getWeightValues(thirtyWindow)
+  const latestWeight = recentMeasuredWeights[0]?.value ?? weights[0]?.value ?? null
+  const oldestRecentWeight = recentMeasuredWeights.at(-1)?.value ?? weights.at(-1)?.value ?? null
   const delta = latestWeight !== null && oldestRecentWeight !== null ? latestWeight - oldestRecentWeight : null
-  const last7 = sorted.slice(0, 7)
-  const trainingDaysLast7 = last7.filter((log) => log.workoutType !== 'Rest' && (log.exercises.length || log.treadmillMinutes)).length
-  const cardioMinutesLast7 = last7.reduce((sum, log) => sum + (parseDurationToMinutes(log.treadmillMinutes) ?? 0), 0)
-  const energyValues = last7.map((log) => safeNumber(log.postGymEnergy)).filter((value): value is number => value !== null)
+  const trainingDaysLast7 = sevenWindow.filter((log) => log.workoutType !== 'Rest' && (log.exercises.length || log.treadmillMinutes || log.treadmillDistanceKm)).length
+  const cardioMinutesLast7 = sevenWindow.reduce((sum, log) => sum + (parseDurationToMinutes(log.treadmillMinutes) ?? 0), 0)
+  const cardioSessionsLast7 = sevenWindow.filter((log) => log.treadmillMinutes || log.treadmillDistanceKm).length
+  const energyValues = validNumberValues(sevenWindow.map((log) => log.postGymEnergy))
   const averageEnergy = average(energyValues)
+  const waistCount = sorted.filter((log) => safeNumber(log.waistSizeCm) !== null).length
+  const treadmillCount = sorted.filter((log) => log.treadmillMinutes || log.treadmillDistanceKm).length
+  const exerciseCount = sorted.reduce((sum, log) => sum + log.exercises.length, 0)
 
   return {
     sevenDayAverage,
+    sevenDayWeightSamples: sevenWeights.length,
     fourteenDayAverage,
+    fourteenDayWeightSamples: fourteenWeights.length,
     trainingDaysLast7,
     cardioMinutesLast7: Math.round(cardioMinutesLast7),
+    cardioSessionsLast7,
     averageEnergy,
+    averageEnergySamples: energyValues.length,
+    logCount: sorted.length,
+    weightCount: weights.length,
+    waistCount,
+    treadmillCount,
+    exerciseCount,
+    earliestLogDate: sorted.at(-1)?.date ?? null,
+    latestLogDate: sorted[0]?.date ?? null,
     weightDeltaText:
       delta === null
-        ? 'Need more weigh-ins'
-        : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} kg vs recent log`,
+        ? 'Need 2+ weigh-ins'
+        : `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} kg`,
   }
 }
 

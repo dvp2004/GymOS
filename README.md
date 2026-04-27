@@ -4,7 +4,7 @@ Personal gym, nutrition, body-weight tracking and AI feedback PWA.
 
 ## Current build status
 
-Version 3 adds editable history, waist tracking, old-log import, and Supabase sync.
+Version 4 adds sparse-data-safe trends, raw historical log import, file import, editable history, waist tracking, and Supabase sync.
 
 - Modern mobile-first React/Vite interface
 - Daily weight, optional waist size, sleep, workout and food logging
@@ -12,7 +12,7 @@ Version 3 adds editable history, waist tracking, old-log import, and Supabase sy
 - Treadmill/cardio logging
 - Recent trend cards
 - Coach prompt builder
-- JSON export and JSON import/backfill
+- JSON export plus JSON/raw text import/backfill
 - Local browser fallback
 - Supabase Auth
 - Supabase Postgres sync under the signed-in user
@@ -124,3 +124,25 @@ The login screen includes a Google OAuth button. It will only work after Google 
 7. Supabase → Authentication → URL Configuration → add `http://localhost:5173/**` as an allowed redirect URL.
 
 Do not request Gmail scopes. GymOS only needs identity sign-in, not email inbox access.
+
+
+## Historical data import
+
+The Trends screen accepts either:
+
+1. a GymOS JSON export/import array, or
+2. raw dated gym text in this style:
+
+```text
+27.4.26
+Weight: - kgs
+Treadmill:
+B. -km, -:00, incline=6.0
+Machine Front lat-pulldown: 85lbs, 3, 12
+```
+
+Only the date is required. Dashes such as `- kgs`, `-km`, or `-:00` are treated as unavailable values, not zero. This matters because missing data should not corrupt averages.
+
+If you import logs while signed in, they are saved to Supabase under the current user. If you import while local-only, they are saved to browser storage until you push/sync them.
+
+Existing dates are updated rather than duplicated.
