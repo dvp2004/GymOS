@@ -1930,12 +1930,18 @@ label {
     pointer-events: none !important;
   }
 
-  .app-shell,
-  .workspace,
-  .today-layout,
-  .view-grid {
-    padding-bottom: calc(160px + env(safe-area-inset-bottom)) !important;
-  }
+.workspace {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+}
+
+.today-layout,
+.view-grid {
+  padding-bottom: 0 !important;
+}
+
+.app-shell {
+  padding-bottom: 0 !important;
+}
 
   .gymos-bottom-dock {
     position: fixed !important;
