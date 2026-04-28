@@ -19,11 +19,23 @@ type ExerciseEntry = {
   completedSets: number
 }
 
+type MealTag =
+  | 'high-protein'
+  | 'low-protein'
+  | 'heavy-carbs'
+  | 'light-meal'
+  | 'restaurant'
+  | 'post-workout'
+  | 'pre-workout'
+  | 'late-meal'
+  | 'hydration-poor'
+
 type MealEntry = {
   id: string
   label: 'Pre-workout' | 'Breakfast' | 'Lunch' | 'Snack' | 'Dinner' | 'Other'
   description: string
   proteinScore: 0 | 1 | 2 | 3
+  tags: MealTag[]
 }
 
 type DailyLog = {
@@ -83,6 +95,7 @@ type MealRow = {
   label: MealEntry['label'] | string
   description: string | null
   protein_score: number | null
+  tags: string[] | null
   position: number
 }
 
@@ -110,6 +123,20 @@ const tabs: Array<{ id: Tab; label: string; icon: string }> = [
   { id: 'trends', label: 'Trends', icon: '◓' },
   { id: 'coach', label: 'Coach', icon: '◆' },
 ]
+
+const MEAL_TAGS: Array<{ id: MealTag; label: string }> = [
+  { id: 'high-protein', label: 'High protein' },
+  { id: 'low-protein', label: 'Low protein' },
+  { id: 'heavy-carbs', label: 'Heavy carbs' },
+  { id: 'light-meal', label: 'Light meal' },
+  { id: 'restaurant', label: 'Restaurant' },
+  { id: 'pre-workout', label: 'Pre-workout' },
+  { id: 'post-workout', label: 'Post-workout' },
+  { id: 'late-meal', label: 'Late meal' },
+  { id: 'hydration-poor', label: 'Hydration poor' },
+]
+
+const MEAL_TAG_IDS = new Set<MealTag>(MEAL_TAGS.map((tag) => tag.id))
 
 const workoutTemplates: Record<Exclude<WorkoutType, 'Custom' | 'Rest' | 'Recovery' | 'Cardio'>, ExerciseEntry[]> = {
   Upper: [
@@ -163,6 +190,7 @@ function makeMeal(label: MealEntry['label'], description = ''): MealEntry {
     label,
     description,
     proteinScore: 1,
+    tags: [],
   }
 }
 
@@ -319,6 +347,14 @@ function normaliseExerciseUnit(value: string | null): ExerciseEntry['unit'] {
   return 'lbs'
 }
 
+function normaliseMealTags(value: unknown): MealTag[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((tag) => String(tag).trim())
+    .filter((tag): tag is MealTag => MEAL_TAG_IDS.has(tag as MealTag))
+}
+
 function normaliseMealLabel(value: string): MealEntry['label'] {
   const allowed: MealEntry['label'][] = ['Pre-workout', 'Breakfast', 'Lunch', 'Snack', 'Dinner', 'Other']
   return allowed.includes(value as MealEntry['label']) ? (value as MealEntry['label']) : 'Other'
@@ -341,6 +377,36 @@ function getErrorMessage(error: unknown) {
 
 function isMissingWaistColumnError(error: unknown) {
   return getErrorMessage(error).toLowerCase().includes('waist_size_cm')
+}
+
+function isMissingMealTagsColumnError(error: unknown) {
+  const message = getErrorMessage(error).toLowerCase()
+
+  return (
+    message.includes('meal_entries') && message.includes('tags')
+  ) || (
+    message.includes("column \"tags\"") ||
+    message.includes("could not find the 'tags' column")
+  )
+}
+
+function buildMealInsertRows(log: DailyLog, cloudLogId: string, includeTags: boolean) {
+  return log.meals.map((meal, index) => {
+    const row: Record<string, unknown> = {
+      id: isUuid(meal.id) ? meal.id : makeId(),
+      daily_log_id: cloudLogId,
+      label: meal.label,
+      description: emptyToNull(meal.description),
+      protein_score: meal.proteinScore,
+      position: index,
+    }
+
+    if (includeTags) {
+      row.tags = meal.tags ?? []
+    }
+
+    return row
+  })
 }
 
 function buildDailyLogPayload(log: DailyLog, userId: string, includeWaistSize: boolean) {
@@ -390,6 +456,7 @@ function mapCloudRowsToLogs(dailyRows: DailyLogRow[], exerciseRows: ExerciseRow[
         label: normaliseMealLabel(meal.label),
         description: meal.description ?? '',
         proteinScore: Math.min(Math.max(meal.protein_score ?? 1, 0), 3) as MealEntry['proteinScore'],
+        tags: normaliseMealTags(meal.tags),
       }))
 
     return {
@@ -532,18 +599,17 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
   }
 
   if (log.meals.length) {
-    const { error } = await db.from('meal_entries').insert(
-      log.meals.map((meal, index) => ({
-        id: isUuid(meal.id) ? meal.id : makeId(),
-        daily_log_id: cloudLogId,
-        label: meal.label,
-        description: emptyToNull(meal.description),
-        protein_score: meal.proteinScore,
-        position: index,
-      })),
-    )
+    const { error } = await db.from('meal_entries').insert(buildMealInsertRows(log, cloudLogId, true))
 
-    if (error) throw error
+    if (error) {
+      if (!isMissingMealTagsColumnError(error)) throw error
+
+      const { error: retryError } = await db
+        .from('meal_entries')
+        .insert(buildMealInsertRows(log, cloudLogId, false))
+
+      if (retryError) throw retryError
+    }
   }
 
   return {
@@ -591,6 +657,7 @@ function normaliseImportedLog(item: unknown): DailyLog {
           proteinScore: typeof entry.proteinScore === 'number'
             ? (Math.min(Math.max(entry.proteinScore, 0), 3) as MealEntry['proteinScore'])
             : 1,
+          tags: normaliseMealTags(entry.tags),
         }
       })
     : []
@@ -1702,6 +1769,15 @@ function NutritionView({
   addMeal: () => void
   removeMeal: (id: string) => void
 }) {
+  function toggleMealTag(meal: MealEntry, tag: MealTag) {
+    const currentTags = meal.tags ?? []
+    const nextTags = currentTags.includes(tag)
+      ? currentTags.filter((item) => item !== tag)
+      : [...currentTags, tag]
+
+    updateMeal(meal.id, { tags: nextTags })
+  }
+
   return (
     <div className="view-grid">
       <section className="panel span-2 form-panel">
@@ -1739,18 +1815,37 @@ function NutritionView({
                 <option>Dinner</option>
                 <option>Other</option>
               </select>
+
               <textarea
                 aria-label="Meal description"
                 placeholder="black chickpeas + chapati + dal + rice + salad"
                 value={meal.description}
                 onChange={(event) => updateMeal(meal.id, { description: event.target.value })}
               />
+
+              <div className="meal-tag-grid">
+                {MEAL_TAGS.map((tag) => (
+                  <button
+                    key={tag.id}
+                    className={`meal-tag-chip ${meal.tags?.includes(tag.id) ? 'active' : ''}`}
+                    type="button"
+                    onClick={() => toggleMealTag(meal, tag.id)}
+                  >
+                    {tag.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="meal-footer">
                 <label>
                   Protein quality
                   <select
                     value={meal.proteinScore}
-                    onChange={(event) => updateMeal(meal.id, { proteinScore: Number(event.target.value) as MealEntry['proteinScore'] })}
+                    onChange={(event) =>
+                      updateMeal(meal.id, {
+                        proteinScore: Number(event.target.value) as MealEntry['proteinScore'],
+                      })
+                    }
                   >
                     <option value={0}>0 - weak</option>
                     <option value={1}>1 - light</option>
@@ -1758,6 +1853,7 @@ function NutritionView({
                     <option value={3}>3 - strong</option>
                   </select>
                 </label>
+
                 <button className="danger-button" type="button" onClick={() => removeMeal(meal.id)}>
                   Remove
                 </button>
@@ -1792,6 +1888,7 @@ function TrendsView({
   const cardioStats = useMemo(() => buildCardioDashboard(logs), [logs])
   const coverage = useMemo(() => buildDataCoverage(logs), [logs])
   const heatmap = useMemo(() => buildConsistencyHeatmap(logs), [logs])
+  const nutritionTags = useMemo(() => buildNutritionTagDashboard(logs), [logs])
 
   async function handleImport() {
     try {
@@ -1945,6 +2042,13 @@ function TrendsView({
             <span>Volume leaders</span>
             <strong>{exerciseDashboard.volumeLeaders[0]?.name ?? '—'}</strong>
             <p>{exerciseDashboard.volumeLeaders.slice(0, 4).map((item) => `${item.name} ${item.volumeLabel}`).join(' · ') || 'Need more weighted entries.'}</p>
+          </article>
+          <article className="analysis-card">
+            <span>Nutrition signal</span>
+            <strong>{nutritionTags.taggedMeals}/{nutritionTags.totalMeals}</strong>
+            <p>
+              {nutritionTags.summary}
+            </p>
           </article>
         </div>
       </section>
@@ -2233,6 +2337,49 @@ function buildDataCoverage(logs: DailyLog[]) {
     waistLogged: logs.filter((log) => safeNumber(log.waistSizeCm) !== null).length,
     cardioLogged: logs.filter((log) => safeNumber(log.treadmillDistanceKm) !== null || parseDurationToMinutes(log.treadmillMinutes) !== null).length,
     foodLogged: logs.filter((log) => log.meals.some((meal) => meal.description.trim())).length,
+  }
+}
+
+function buildNutritionTagDashboard(logs: DailyLog[]) {
+  const counts = new Map<MealTag, number>()
+  let totalMeals = 0
+  let taggedMeals = 0
+
+  for (const log of logs) {
+    for (const meal of log.meals) {
+      totalMeals += 1
+
+      if (meal.tags?.length) {
+        taggedMeals += 1
+      }
+
+      for (const tag of meal.tags ?? []) {
+        counts.set(tag, (counts.get(tag) ?? 0) + 1)
+      }
+    }
+  }
+
+  const topTags = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([id, count]) => ({
+      id,
+      label: MEAL_TAGS.find((tag) => tag.id === id)?.label ?? id,
+      count,
+    }))
+
+  return {
+    totalMeals,
+    taggedMeals,
+    topTags,
+    highProteinMeals: counts.get('high-protein') ?? 0,
+    lowProteinMeals: counts.get('low-protein') ?? 0,
+    restaurantMeals: counts.get('restaurant') ?? 0,
+    postWorkoutMeals: counts.get('post-workout') ?? 0,
+    lateMeals: counts.get('late-meal') ?? 0,
+    summary: topTags.length
+      ? topTags.map((tag) => `${tag.label} ${tag.count}`).join(' · ')
+      : 'No nutrition tags yet.',
   }
 }
 
