@@ -2046,24 +2046,47 @@ function WorkoutView({
   const [rawWorkoutText, setRawWorkoutText] = useState('')
   const [rawWorkoutMessage, setRawWorkoutMessage] = useState('')
   const [parseWarnings, setParseWarnings] = useState<ParserWarning[]>([])
+  const [parsedPreview, setParsedPreview] = useState<ParsedWorkoutText | null>(null)
 
   const exerciseHistory = useMemo(() => buildExerciseHistory(logs, draft.date), [logs, draft.date])
 
-  function applyRawWorkoutText() {
+  function previewRawWorkoutText() {
     if (!rawWorkoutText.trim()) {
       setRawWorkoutMessage('Paste a workout log first.')
+      setParsedPreview(null)
+      setParseWarnings([])
       return
     }
 
     const parsed = parseRawWorkoutText(rawWorkoutText)
-    setParseWarnings(parsed.warnings)
 
     if (!parsed.exercises.length && !parsed.treadmillDistanceKm && !parsed.treadmillMinutes && !parsed.weightKg) {
       setRawWorkoutMessage('Nothing useful was detected. Check the format and try again.')
+      setParsedPreview(null)
+      setParseWarnings(parsed.warnings)
       return
     }
 
-    updateDraft('weightKg', parsed.weightKg)
+    setParsedPreview(parsed)
+    setParseWarnings(parsed.warnings)
+    setRawWorkoutMessage(
+      `Preview ready: ${parsed.exercises.length} exercise${parsed.exercises.length === 1 ? '' : 's'} detected as ${parsed.workoutType}.`,
+    )
+  }
+
+  function applyParsedWorkoutText() {
+    const parsed = parsedPreview ?? parseRawWorkoutText(rawWorkoutText)
+
+    if (!parsed.exercises.length && !parsed.treadmillDistanceKm && !parsed.treadmillMinutes && !parsed.weightKg) {
+      setRawWorkoutMessage('Nothing useful was detected. Check the format and try again.')
+      setParseWarnings(parsed.warnings)
+      return
+    }
+
+    if (parsed.weightKg) {
+      updateDraft('weightKg', parsed.weightKg)
+    }
+
     updateDraft('workoutType', parsed.workoutType)
     updateDraft('treadmillDistanceKm', parsed.treadmillDistanceKm)
     updateDraft('treadmillMinutes', parsed.treadmillMinutes)
@@ -2071,8 +2094,10 @@ function WorkoutView({
     updateDraft('exercises', parsed.exercises)
     updateDraft('notes', buildNotesWithRawWorkout(draft.notes, rawWorkoutText))
 
+    setParsedPreview(parsed)
+    setParseWarnings(parsed.warnings)
     setRawWorkoutMessage(
-      `Applied ${parsed.exercises.length} exercise${parsed.exercises.length === 1 ? '' : 's'} to ${formatDateShort(draft.date)}. GymOS classified it as ${parsed.workoutType}. Click Save log to sync.`,
+      `Applied ${parsed.exercises.length} exercise${parsed.exercises.length === 1 ? '' : 's'} to ${formatDateShort(draft.date)}. Click Save log to sync.`,
     )
   }
 
@@ -2084,7 +2109,7 @@ function WorkoutView({
             <p className="eyebrow">Workout input</p>
             <h3>Paste today’s workout</h3>
           </div>
-          <button className="primary-button" type="button" onClick={applyRawWorkoutText}>
+          <button className="primary-button" type="button" onClick={applyParsedWorkoutText}>
             Apply to {formatDateShort(draft.date)}
           </button>
         </div>
@@ -2109,23 +2134,74 @@ Plank: , 3, 30 seconds`}
             setRawWorkoutText(event.target.value)
             setRawWorkoutMessage('')
             setParseWarnings([])
+            setParsedPreview(null)
           }}
         />
 
         <div className="raw-workout-actions">
-          <button
-            className="ghost-button"
-            type="button"
-            onClick={() => {
-              setRawWorkoutText('')
-              setRawWorkoutMessage('')
-              setParseWarnings([])
-            }}
-          >
+          <button className="ghost-button" type="button" onClick={() => {
+            setRawWorkoutText('')
+            setRawWorkoutMessage('')
+            setParseWarnings([])
+            setParsedPreview(null)
+          }}>
             Clear
           </button>
+
+          <button className="ghost-button" type="button" onClick={previewRawWorkoutText}>
+            Preview parse
+          </button>
+
+          <button className="primary-button" type="button" onClick={applyParsedWorkoutText}>
+            Apply to {formatDateShort(draft.date)}
+          </button>
+
           {rawWorkoutMessage && <span>{rawWorkoutMessage}</span>}
         </div>
+
+        {parsedPreview && (
+          <div className="parsed-preview-panel">
+            <div className="section-heading compact">
+              <div>
+                <p className="eyebrow">Parsed preview</p>
+                <h3>{parsedPreview.workoutType} detected</h3>
+              </div>
+              <span className="status-pill">{parsedPreview.exercises.length} exercises</span>
+            </div>
+
+            <div className="parsed-preview-stats">
+              <article>
+                <span>Weight</span>
+                <strong>{parsedPreview.weightKg ? `${parsedPreview.weightKg} kg` : '—'}</strong>
+              </article>
+              <article>
+                <span>Treadmill</span>
+                <strong>
+                  {parsedPreview.treadmillDistanceKm || '—'} km · {parsedPreview.treadmillMinutes || '—'}
+                </strong>
+              </article>
+              <article>
+                <span>Incline</span>
+                <strong>{parsedPreview.treadmillIncline || '—'}</strong>
+              </article>
+              <article>
+                <span>Warnings</span>
+                <strong>{parsedPreview.warnings.length}</strong>
+              </article>
+            </div>
+
+            <div className="parsed-preview-list">
+              {parsedPreview.exercises.map((exercise) => (
+                <div className="parsed-preview-row" key={exercise.id}>
+                  <strong>{exercise.name}</strong>
+                  <span>
+                    {exercise.weight || '—'} {exercise.unit !== 'bodyweight' ? exercise.unit : ''} · {exercise.sets || '—'} × {exercise.reps || '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {parseWarnings.length > 0 && (
           <div className="parser-warning-list">
