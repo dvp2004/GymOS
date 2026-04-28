@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ChangeEvent, FormEvent } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
@@ -115,6 +115,15 @@ type ExercisePerformanceBadge = {
   tone: 'pr' | 'up' | 'match' | 'down'
 }
 
+type ParsedWorkoutText = {
+  weightKg: string
+  treadmillDistanceKm: string
+  treadmillMinutes: string
+  treadmillIncline: string
+  workoutType: WorkoutType
+  exercises: ExerciseEntry[]
+}
+
 const STORAGE_KEY = 'gymos.logs.v1'
 
 const tabs: Array<{ id: Tab; label: string; icon: string }> = [
@@ -209,7 +218,7 @@ function createEmptyLog(date = toInputDate(new Date())): DailyLog {
     weightKg: '',
     waistSizeCm: '',
     sleepHours: '',
-    workoutType: 'Upper',
+    workoutType: 'Custom',
     gymTime: '',
     preWorkout: '',
     postGymEnergy: '',
@@ -217,7 +226,7 @@ function createEmptyLog(date = toInputDate(new Date())): DailyLog {
     treadmillMinutes: '',
     treadmillIncline: '6.0',
     notes: '',
-    exercises: workoutTemplates.Upper.map((exercise) => ({ ...exercise, id: makeId() })),
+    exercises: [],
     meals: [
       makeMeal('Pre-workout'),
       makeMeal('Lunch'),
@@ -241,49 +250,6 @@ function isUnavailableValue(value: unknown) {
     trimmed === 'null' ||
     trimmed === 'undefined'
   )
-}
-
-function formatElapsedTime(totalSeconds: number) {
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-  }
-
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
-
-function formatClockTime(date: Date) {
-  return date.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-}
-
-function getWorkoutCompletion(exercises: ExerciseEntry[]) {
-  const totalSets = exercises.reduce((sum, exercise) => sum + (safeNumber(exercise.sets) ?? 0), 0)
-  const completedSets = exercises.reduce((sum, exercise) => sum + Math.max(exercise.completedSets || 0, 0), 0)
-
-  if (!totalSets) {
-    return {
-      totalSets: 0,
-      completedSets: 0,
-      percentage: 0,
-      label: 'No sets planned',
-    }
-  }
-
-  const percentage = Math.min(100, Math.round((completedSets / totalSets) * 100))
-
-  return {
-    totalSets,
-    completedSets,
-    percentage,
-    label: `${completedSets}/${totalSets} sets`,
-  }
 }
 
 function safeNumber(value: string | number | null | undefined) {
@@ -341,6 +307,176 @@ function parseDurationToMinutes(value: string | number | null | undefined) {
 
   const parsed = Number(trimmed)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function parseWorkoutWeightLine(line: string) {
+  const match = line.match(/weight\s*:\s*([-\d.]+)\s*kgs?/i)
+  if (!match) return ''
+
+  const value = match[1]?.trim()
+  if (!value || value === '-') return ''
+
+  return value
+}
+
+function parseTreadmillLine(line: string) {
+  const distanceMatch = line.match(/([-\d.]+)\s*km/i)
+  const durationMatch = line.match(/,\s*([-\d:]+)\s*,/i)
+  const inclineMatch = line.match(/incline\s*=\s*([-\d.]+)/i)
+
+  const distance = distanceMatch?.[1]?.trim()
+  const duration = durationMatch?.[1]?.trim()
+  const incline = inclineMatch?.[1]?.trim()
+
+  return {
+    treadmillDistanceKm: distance && distance !== '-' ? distance : '',
+    treadmillMinutes: duration && duration !== '-' && duration !== '-:00' ? duration : '',
+    treadmillIncline: incline && incline !== '-' ? incline : '',
+  }
+}
+
+function parseExerciseLine(line: string): ExerciseEntry | null {
+  if (!line.includes(':')) return null
+  if (/^weight\s*:/i.test(line)) return null
+  if (/^treadmill\s*:/i.test(line)) return null
+
+  const [rawName, rawDetails = ''] = line.split(/:(.*)/s)
+  const name = rawName.trim()
+
+  if (!name) return null
+
+  const parts = rawDetails.split(',').map((part) => part.trim())
+
+  const weightPart = parts[0] ?? ''
+  const setsPart = parts[1] ?? ''
+  const repsPart = parts.slice(2).join(', ') || ''
+
+  const weightMatch = weightPart.match(/([-\d.]+)?\s*(lbs|lb|kg)?/i)
+  const rawWeight = weightMatch?.[1]?.trim() ?? ''
+  const rawUnit = weightMatch?.[2]?.toLowerCase()
+
+  const weight = rawWeight && rawWeight !== '-' ? rawWeight : ''
+  const unit: ExerciseEntry['unit'] =
+    rawUnit === 'kg'
+      ? 'kg'
+      : rawUnit === 'lbs' || rawUnit === 'lb'
+        ? 'lbs'
+        : weight
+          ? 'lbs'
+          : 'bodyweight'
+
+  const sets = setsPart && setsPart !== '-' ? setsPart : ''
+  const reps = repsPart && repsPart !== '-' ? repsPart : ''
+
+  const canonical = canonicalExerciseName(name)
+  const displayName = displayExerciseName(canonical || name)
+
+  return {
+    id: makeId(),
+    name: displayName,
+    weight,
+    unit,
+    sets,
+    reps,
+    completedSets: 0,
+  }
+}
+
+function inferWorkoutTypeFromExercises(exercises: ExerciseEntry[], hasCardio: boolean): WorkoutType {
+  if (!exercises.length && hasCardio) return 'Cardio'
+  if (!exercises.length) return 'Custom'
+
+  const lowerExercises = new Set([
+    'squat',
+    'reverse-lunge',
+    'leg-curl',
+    'leg-extension',
+    'standing-calf-raise',
+    'dumbbell-romanian-deadlift',
+    'plank',
+  ])
+
+  const upperExercises = new Set([
+    'front-lat-pulldown',
+    'machine-chest-press',
+    'machine-shoulder-press',
+    'machine-triceps-pushdown',
+    'triceps-extension',
+    'seated-row',
+    'single-arm-row',
+    'bicep-curl',
+    'hammer-curl',
+    'dumbbell-lateral-raise',
+    'shoulder-shrug',
+  ])
+
+  let lowerScore = 0
+  let upperScore = 0
+
+  for (const exercise of exercises) {
+    const canonical = canonicalExerciseName(exercise.name)
+
+    if (lowerExercises.has(canonical)) lowerScore += 1
+    if (upperExercises.has(canonical)) upperScore += 1
+  }
+
+  if (lowerScore > upperScore) return 'Lower'
+  if (upperScore > lowerScore) return 'Upper'
+
+  return 'Custom'
+}
+
+function parseRawWorkoutText(raw: string): ParsedWorkoutText {
+  const lines = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  let weightKg = ''
+  let treadmillDistanceKm = ''
+  let treadmillMinutes = ''
+  let treadmillIncline = ''
+  const exercises: ExerciseEntry[] = []
+
+  for (const line of lines) {
+    if (/^weight\s*:/i.test(line)) {
+      weightKg = parseWorkoutWeightLine(line)
+      continue
+    }
+
+    if (/km/i.test(line) && /incline/i.test(line)) {
+      const treadmill = parseTreadmillLine(line)
+      treadmillDistanceKm = treadmill.treadmillDistanceKm
+      treadmillMinutes = treadmill.treadmillMinutes
+      treadmillIncline = treadmill.treadmillIncline
+      continue
+    }
+
+    const exercise = parseExerciseLine(line)
+    if (exercise) {
+      exercises.push(exercise)
+    }
+  }
+
+  const hasCardio = Boolean(treadmillDistanceKm || treadmillMinutes)
+  const workoutType = inferWorkoutTypeFromExercises(exercises, hasCardio)
+
+  return {
+    weightKg,
+    treadmillDistanceKm,
+    treadmillMinutes,
+    treadmillIncline,
+    workoutType,
+    exercises,
+  }
+}
+
+function buildNotesWithRawWorkout(existingNotes: string, rawWorkout: string) {
+  const marker = 'Raw workout log:'
+  const existingWithoutOldRaw = existingNotes.split(marker)[0]?.trim() ?? ''
+  const rawBlock = `${marker}\n${rawWorkout.trim()}`
+
+  return [existingWithoutOldRaw, rawBlock].filter(Boolean).join('\n\n')
 }
 
 function loadLogs(): DailyLog[] {
@@ -759,7 +895,7 @@ function App() {
   const [logs, setLogs] = useState<DailyLog[]>(loadLogs)
   const [activeDate, setActiveDate] = useState(toInputDate(new Date()))
   const [draft, setDraft] = useState<DailyLog>(() => createEmptyLog())
-  const [coachQuestion, setCoachQuestion] = useState('Why am I tired after gym and what should I change tomorrow?')
+  const [coachQuestion, setCoachQuestion] = useState('What do you reckon about today’s workout and what should I focus on next?')
   const [saveState, setSaveState] = useState<'idle' | 'saved'>('idle')
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
   const [session, setSession] = useState<Session | null>(null)
@@ -1365,7 +1501,7 @@ function TodayView({
           <p>{nextWorkout.reason}</p>
           <div className="command-actions">
             <button className="primary-button" type="button" onClick={() => setActiveTab('workout')}>
-              {draft.exercises.length ? 'Open workout' : 'Start workout'}
+              {draft.exercises.length ? 'Open workout' : 'Paste workout'}
             </button>
             <button className="ghost-button" type="button" onClick={() => setActiveTab('nutrition')}>
               Log food
@@ -1525,6 +1661,7 @@ function TodayView({
     </div>
   )
 }
+
 function WorkoutView({
   draft,
   logs,
@@ -1543,32 +1680,18 @@ function WorkoutView({
   removeExercise: (id: string) => void
 }) {
   const [selectedWorkoutType, setSelectedWorkoutType] = useState<WorkoutType>(draft.workoutType)
-  const [isWorkoutActive, setIsWorkoutActive] = useState(false)
-  const [isWorkoutPaused, setIsWorkoutPaused] = useState(false)
-  const [elapsedSeconds, setElapsedSeconds] = useState(0)
-  const [startedAt, setStartedAt] = useState<Date | null>(null)
-  const workoutStartRef = useRef<Date | null>(null)
+  const [rawWorkoutText, setRawWorkoutText] = useState('')
+  const [rawWorkoutMessage, setRawWorkoutMessage] = useState('')
 
   useEffect(() => {
     setSelectedWorkoutType(draft.workoutType)
   }, [draft.date, draft.workoutType])
-
-  useEffect(() => {
-    if (!isWorkoutActive || isWorkoutPaused) return
-
-    const interval = window.setInterval(() => {
-      setElapsedSeconds((current) => current + 1)
-    }, 1000)
-
-    return () => window.clearInterval(interval)
-  }, [isWorkoutActive, isWorkoutPaused])
 
   const isViewingSavedType = selectedWorkoutType === draft.workoutType
   const visibleExercises = isViewingSavedType ? draft.exercises : []
   const exerciseHistory = useMemo(() => buildExerciseHistory(logs, draft.date), [logs, draft.date])
   const frequentExercises = useMemo(() => getFrequentExercises(logs), [logs])
   const previousWorkout = useMemo(() => getLastWorkout(logs, draft.date), [logs, draft.date])
-  const completion = useMemo(() => getWorkoutCompletion(draft.exercises), [draft.exercises])
 
   function addFrequentExercise(name: string) {
     const canonical = canonicalExerciseName(name)
@@ -1581,34 +1704,31 @@ function WorkoutView({
     updateDraft('exercises', [...draft.exercises, nextExercise])
   }
 
-  function startWorkoutMode() {
-    const now = new Date()
-
-    workoutStartRef.current = now
-    setStartedAt(now)
-    setElapsedSeconds(0)
-    setIsWorkoutPaused(false)
-    setIsWorkoutActive(true)
-
-    if (!draft.gymTime) {
-      updateDraft('gymTime', `${formatClockTime(now)}-`)
-    }
-  }
-
-  function pauseWorkoutMode() {
-    setIsWorkoutPaused((current) => !current)
-  }
-
-  function finishWorkoutMode() {
-    const end = new Date()
-    const start = workoutStartRef.current ?? startedAt
-
-    if (start) {
-      updateDraft('gymTime', `${formatClockTime(start)}-${formatClockTime(end)}`)
+  function applyRawWorkoutText() {
+    if (!rawWorkoutText.trim()) {
+      setRawWorkoutMessage('Paste a workout log first.')
+      return
     }
 
-    setIsWorkoutActive(false)
-    setIsWorkoutPaused(false)
+    const parsed = parseRawWorkoutText(rawWorkoutText)
+
+    if (!parsed.exercises.length && !parsed.treadmillDistanceKm && !parsed.treadmillMinutes && !parsed.weightKg) {
+      setRawWorkoutMessage('Nothing useful was detected. Check the format and try again.')
+      return
+    }
+
+    updateDraft('weightKg', parsed.weightKg)
+    updateDraft('workoutType', parsed.workoutType)
+    setSelectedWorkoutType(parsed.workoutType)
+    updateDraft('treadmillDistanceKm', parsed.treadmillDistanceKm)
+    updateDraft('treadmillMinutes', parsed.treadmillMinutes)
+    updateDraft('treadmillIncline', parsed.treadmillIncline || draft.treadmillIncline)
+    updateDraft('exercises', parsed.exercises)
+    updateDraft('notes', buildNotesWithRawWorkout(draft.notes, rawWorkoutText))
+
+    setRawWorkoutMessage(
+      `Applied ${parsed.exercises.length} exercise${parsed.exercises.length === 1 ? '' : 's'} to ${formatDateShort(draft.date)} as ${parsed.workoutType}. Click Save log to sync.`,
+    )
   }
 
   function copyPreviousWorkout() {
@@ -1633,56 +1753,67 @@ function WorkoutView({
     updateDraft('treadmillDistanceKm', previousWorkout.treadmillDistanceKm)
     updateDraft('treadmillMinutes', previousWorkout.treadmillMinutes)
     updateDraft('treadmillIncline', previousWorkout.treadmillIncline)
+    updateDraft('notes', buildNotesWithRawWorkout(draft.notes, `Copied workout from ${formatDateShort(previousWorkout.date)}`))
   }
 
   function applySelectedTemplate() {
-    const confirmed = window.confirm("Replace this day with a " + selectedWorkoutType + " template? This will overwrite the current saved workout fields for this date.")
+    const confirmed = window.confirm(
+      `Replace this day with a ${selectedWorkoutType} template? This will overwrite the current saved workout fields for this date.`,
+    )
+
     if (!confirmed) return
     loadTemplate(selectedWorkoutType)
   }
 
   return (
     <div className="view-grid">
-      <section className={`active-workout-panel span-2 ${isWorkoutActive ? 'live' : ''}`}>
-        <div>
-          <p className="eyebrow">{isWorkoutActive ? 'Workout live' : 'Ready to train'}</p>
-          <h3>{isWorkoutActive ? formatElapsedTime(elapsedSeconds) : `${draft.workoutType} session`}</h3>
-          <p>
-            {isWorkoutActive
-              ? `${completion.label} completed · ${completion.percentage}% done`
-              : 'Start workout mode to track time, sets and session progress while you train.'}
-          </p>
+      <section className="panel span-2 raw-workout-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Fast workout import</p>
+            <h3>Paste today’s workout</h3>
+          </div>
+          <button className="primary-button" type="button" onClick={applyRawWorkoutText}>
+            Apply to {formatDateShort(draft.date)}
+          </button>
         </div>
 
-        <div className="workout-progress-block">
-          <div className="workout-progress-ring" style={{ ['--progress' as string]: `${completion.percentage}%` }}>
-            <strong>{completion.percentage}%</strong>
-            <span>sets</span>
-          </div>
+        <p className="helper-copy">
+          Paste the exact format you already use. GymOS will extract weight, treadmill data, exercises, sets,
+          reps, and normalise exercise names. Then review below and hit Save log.
+        </p>
 
-          <div className="active-workout-actions">
-            {!isWorkoutActive ? (
-              <button className="primary-button" type="button" onClick={startWorkoutMode}>
-                Start workout
-              </button>
-            ) : (
-              <>
-                <button className="ghost-button" type="button" onClick={pauseWorkoutMode}>
-                  {isWorkoutPaused ? 'Resume' : 'Pause'}
-                </button>
-                <button className="primary-button" type="button" onClick={finishWorkoutMode}>
-                  Finish
-                </button>
-              </>
-            )}
-          </div>
+        <textarea
+          className="raw-workout-box"
+          placeholder={`Weight: - kgs
+Treadmill:
+B. 0.75km, 10:00, incline=6.0
+Squats: 0lbs, 3, 12
+Reverse Lunge: 0lbs, 3, 12
+Leg curl (Glutes & Hamstrings): 20lbs, 3, 12
+Leg extension (Quadriceps): 30lbs, 3, 12
+Standing calf Raise: 0lbs, 3, 12
+Plank: , 3, 30 seconds`}
+          value={rawWorkoutText}
+          onChange={(event) => {
+            setRawWorkoutText(event.target.value)
+            setRawWorkoutMessage('')
+          }}
+        />
+
+        <div className="raw-workout-actions">
+          <button className="ghost-button" type="button" onClick={() => setRawWorkoutText('')}>
+            Clear
+          </button>
+          {rawWorkoutMessage && <span>{rawWorkoutMessage}</span>}
         </div>
       </section>
+
       <section className="panel span-2">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Training plan</p>
-            <h3>Workout builder</h3>
+            <p className="eyebrow">Manual adjustments</p>
+            <h3>Review parsed workout</h3>
           </div>
           <div className="workout-header-actions">
             <button
@@ -1711,9 +1842,11 @@ function WorkoutView({
             </button>
           ))}
         </div>
+
         <p className="helper-copy tight">
-          These chips are now a view selector first. They will not overwrite a saved day unless you explicitly apply a template.
+          These chips are a view selector first. They will not overwrite a saved day unless you explicitly apply a template.
         </p>
+
         {isViewingSavedType && frequentExercises.length > 0 && (
           <div className="frequent-exercise-panel">
             <div>
@@ -1748,7 +1881,14 @@ function WorkoutView({
 
         {!isViewingSavedType && (
           <div className="empty-state action-state">
-            <strong>No {selectedWorkoutType} data is saved for {new Date(`${draft.date}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.</strong>
+            <strong>
+              No {selectedWorkoutType} data is saved for{' '}
+              {new Date(`${draft.date}T00:00:00`).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+              })}
+              .
+            </strong>
             <span>
               The saved log for this date is marked as {draft.workoutType}. Switching views no longer mutates your real data.
             </span>
@@ -1761,7 +1901,9 @@ function WorkoutView({
         {isViewingSavedType && (
           <div className="exercise-list">
             {visibleExercises.length === 0 && (
-              <div className="empty-state">No strength exercises for this day. Add cardio, recovery guidance, or a custom exercise.</div>
+              <div className="empty-state">
+                No exercises logged yet. Paste your workout above, copy a previous workout, or add one manually.
+              </div>
             )}
 
             {visibleExercises.map((exercise) => {
@@ -1770,89 +1912,90 @@ function WorkoutView({
               const performanceBadge = getExercisePerformanceBadge(exercise, history)
 
               return (
-              <article className="exercise-card" key={exercise.id}>
-                <div className="exercise-main">
-                  <div className="exercise-title-row">
-                    <input
-                      aria-label="Exercise name"
-                      className="exercise-name"
-                      value={exercise.name}
-                      onChange={(event) => updateExercise(exercise.id, { name: event.target.value })}
-                    />
-                    {performanceBadge && (
-                      <span className={`performance-badge ${performanceBadge.tone}`}>
-                        {performanceBadge.label}
-                      </span>
-                    )}
+                <article className="exercise-card" key={exercise.id}>
+                  <div className="exercise-main">
+                    <div className="exercise-title-row">
+                      <input
+                        aria-label="Exercise name"
+                        className="exercise-name"
+                        value={exercise.name}
+                        onChange={(event) => updateExercise(exercise.id, { name: event.target.value })}
+                      />
+                      {performanceBadge && (
+                        <span className={`performance-badge ${performanceBadge.tone}`}>
+                          {performanceBadge.label}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mini-grid">
+                      <input
+                        aria-label="Weight"
+                        placeholder="Weight"
+                        value={exercise.weight}
+                        onChange={(event) => updateExercise(exercise.id, { weight: event.target.value })}
+                      />
+                      <select
+                        aria-label="Unit"
+                        value={exercise.unit}
+                        onChange={(event) =>
+                          updateExercise(exercise.id, { unit: event.target.value as ExerciseEntry['unit'] })
+                        }
+                      >
+                        <option value="lbs">lbs</option>
+                        <option value="kg">kg</option>
+                        <option value="bodyweight">bodyweight</option>
+                      </select>
+                      <input
+                        aria-label="Sets"
+                        placeholder="Sets"
+                        value={exercise.sets}
+                        onChange={(event) => updateExercise(exercise.id, { sets: event.target.value })}
+                      />
+                      <input
+                        aria-label="Reps"
+                        placeholder="Reps"
+                        value={exercise.reps}
+                        onChange={(event) => updateExercise(exercise.id, { reps: event.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div className="mini-grid">
-                    <input
-                      aria-label="Weight"
-                      placeholder="Weight"
-                      value={exercise.weight}
-                      onChange={(event) => updateExercise(exercise.id, { weight: event.target.value })}
-                    />
-                    <select
-                      aria-label="Unit"
-                      value={exercise.unit}
-                      onChange={(event) => updateExercise(exercise.id, { unit: event.target.value as ExerciseEntry['unit'] })}
-                    >
-                      <option value="lbs">lbs</option>
-                      <option value="kg">kg</option>
-                      <option value="bodyweight">bodyweight</option>
-                    </select>
-                    <input
-                      aria-label="Sets"
-                      placeholder="Sets"
-                      value={exercise.sets}
-                      onChange={(event) => updateExercise(exercise.id, { sets: event.target.value })}
-                    />
-                    <input
-                      aria-label="Reps"
-                      placeholder="Reps"
-                      value={exercise.reps}
-                      onChange={(event) => updateExercise(exercise.id, { reps: event.target.value })}
-                    />
+
+                  {history && (
+                    <div className="exercise-history-strip">
+                      <span>Last: {history.lastLabel}</span>
+                      <span>Best: {history.bestLabel}</span>
+                      <button
+                        className="micro-button"
+                        type="button"
+                        onClick={() => updateExercise(exercise.id, history.lastPatch)}
+                      >
+                        Copy last
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="set-dots" aria-label="Completed sets">
+                    {Array.from({ length: Math.max(Number(exercise.sets) || 0, 1) }).map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className={index < exercise.completedSets ? 'done' : ''}
+                        onClick={() =>
+                          updateExercise(exercise.id, {
+                            completedSets: index + 1 === exercise.completedSets ? index : index + 1,
+                          })
+                        }
+                        aria-label={`Mark set ${index + 1}`}
+                      >
+                        {index + 1}
+                      </button>
+                    ))}
                   </div>
-                </div>
 
-
-                {history && (
-                  <div className="exercise-history-strip">
-                    <span>Last: {history.lastLabel}</span>
-                    <span>Best: {history.bestLabel}</span>
-                    <button
-                      className="micro-button"
-                      type="button"
-                      onClick={() => updateExercise(exercise.id, history.lastPatch)}
-                    >
-                      Copy last
-                    </button>
-                  </div>
-                )}
-
-                <div className="set-dots" aria-label="Completed sets">
-                  {Array.from({ length: Math.max(Number(exercise.sets) || 0, 1) }).map((_, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      className={index < exercise.completedSets ? 'done' : ''}
-                      onClick={() =>
-                        updateExercise(exercise.id, {
-                          completedSets: index + 1 === exercise.completedSets ? index : index + 1,
-                        })
-                      }
-                      aria-label={`Mark set ${index + 1}`}
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-                </div>
-
-                <button className="danger-button" type="button" onClick={() => removeExercise(exercise.id)}>
-                  Remove
-                </button>
-              </article>
+                  <button className="danger-button" type="button" onClick={() => removeExercise(exercise.id)}>
+                    Remove
+                  </button>
+                </article>
               )
             })}
           </div>
@@ -2337,7 +2480,13 @@ function hasWorkoutData(log: DailyLog) {
 }
 
 function getLastWorkout(logs: DailyLog[], beforeDate?: string) {
-  return sortLogs(logs).find((log) => log.date !== beforeDate && hasWorkoutData(log)) ?? null
+  const sorted = sortLogs(logs).filter(hasWorkoutData)
+
+  if (!beforeDate) {
+    return sorted[0] ?? null
+  }
+
+  return sorted.find((log) => log.date < beforeDate) ?? sorted.find((log) => log.date !== beforeDate) ?? null
 }
 
 function getFrequentExercises(logs: DailyLog[], limit = 12) {
@@ -2386,40 +2535,47 @@ function getFrequentExercises(logs: DailyLog[], limit = 12) {
 
 function getNextWorkoutRecommendation(logs: DailyLog[], draft: DailyLog) {
   const recent = sortLogs(logs).filter(hasWorkoutData)
-  const last = recent.find((log) => log.date !== draft.date)
-  const recentTypes = recent.slice(0, 3).map((log) => log.workoutType)
+  const last = getLastWorkout(logs, draft.date)
+  const recentTypes = recent.filter((log) => log.date !== draft.date).slice(0, 3).map((log) => log.workoutType)
 
   if (draft.exercises.length) {
     return {
-      headline: `${draft.workoutType} is already loaded`,
-      reason: 'Open the workout, check previous performance, then save only what actually happened.',
+      headline: `${draft.workoutType} workout is loaded`,
+      reason: 'Review the parsed workout, check previous/best performance, then save only what actually happened.',
     }
   }
 
   if (!last) {
     return {
-      headline: 'Start with a clean Upper day',
-      reason: 'You have no previous workout in this account yet. Log one solid session before chasing advanced analytics.',
+      headline: 'Paste your first workout log',
+      reason: 'Start by pasting the exact workout format you already use. GymOS will structure it and build trends from there.',
     }
   }
 
   if (recentTypes.filter((type) => type === 'Upper').length >= 2) {
     return {
-      headline: 'Bias today towards Lower body',
-      reason: 'Your recent logs lean upper-heavy. Balance matters if you want body recomposition, not just arm/chest repetition.',
+      headline: 'Lower body should probably be next',
+      reason: 'Your recent logs lean upper-heavy. Balance matters if you want recomposition, not just repeated upper-body volume.',
     }
   }
 
   if (last.workoutType === 'Lower') {
     return {
       headline: 'Upper day makes sense next',
-      reason: `Last saved workout was Lower on ${formatDateShort(last.date)}. Rotate rather than randomly adding more volume.`,
+      reason: `Last saved workout was Lower on ${formatDateShort(last.date)}. Keep the rotation deliberate.`,
+    }
+  }
+
+  if (last.workoutType === 'Upper') {
+    return {
+      headline: 'Lower or recovery should be considered',
+      reason: `Last saved workout was Upper on ${formatDateShort(last.date)}. Do not let habit turn every session into upper body.`,
     }
   }
 
   return {
-    headline: 'Lower or recovery should be considered',
-    reason: `Last saved workout was ${last.workoutType} on ${formatDateShort(last.date)}. Do not let upper-body habits run the programme.`,
+    headline: 'Paste today’s actual workout',
+    reason: `Last saved workout was ${last.workoutType} on ${formatDateShort(last.date)}. Log what you actually did, then let trends judge it.`,
   }
 }
 
@@ -2817,11 +2973,14 @@ function buildExerciseDashboard(logs: DailyLog[]) {
   for (const log of [...logs].sort((a, b) => a.date.localeCompare(b.date))) {
     for (const exercise of log.exercises) {
       const name = canonicalExerciseName(exercise.name)
+      if (!name) continue
+
       const weight = firstNumber(exercise.weight)
       const sets = firstNumber(exercise.sets)
       const reps = firstNumber(exercise.reps)
       const volume = weight !== null && weight > 0 && sets !== null && reps !== null ? weight * sets * reps : null
       const items = byExercise.get(name) ?? []
+
       items.push({ date: log.date, exercise, weight, volume })
       byExercise.set(name, items)
     }
@@ -2837,12 +2996,15 @@ function buildExerciseDashboard(logs: DailyLog[]) {
         if (!winner) return entry
         return (entry.weight ?? 0) > (winner.weight ?? 0) ? entry : winner
       }, null)
+
       const firstWeight = first.weight
       const latestWeight = latest.weight
       const delta = firstWeight !== null && latestWeight !== null ? latestWeight - firstWeight : null
+      const unit = latest.exercise.unit || 'lbs'
 
       return {
-        name,
+        name: displayExerciseName(name),
+        canonicalName: name,
         sessions: entries.length,
         firstLabel: formatExerciseEntry(first.exercise),
         latestLabel: formatExerciseEntry(latest.exercise),
@@ -2851,9 +3013,9 @@ function buildExerciseDashboard(logs: DailyLog[]) {
           delta === null
             ? 'Track load consistently to see direction.'
             : delta > 0
-              ? `Up ${delta.toFixed(delta % 1 === 0 ? 0 : 1)} ${latest.exercise.unit || 'lbs'} since first log.`
+              ? `Up ${delta.toFixed(delta % 1 === 0 ? 0 : 1)} ${unit} since first log.`
               : delta < 0
-                ? `Down ${Math.abs(delta).toFixed(delta % 1 === 0 ? 0 : 1)} ${latest.exercise.unit || 'lbs'} since first log.`
+                ? `Down ${Math.abs(delta).toFixed(delta % 1 === 0 ? 0 : 1)} ${unit} since first log.`
                 : 'Load is flat; look for rep quality, form, or volume improvements.',
       }
     })
@@ -2861,7 +3023,8 @@ function buildExerciseDashboard(logs: DailyLog[]) {
 
   const volumeLeaders = [...byExercise.entries()]
     .map(([name, entries]) => ({
-      name,
+      name: displayExerciseName(name),
+      canonicalName: name,
       volume: entries.reduce((sum, entry) => sum + (entry.volume ?? 0), 0),
     }))
     .filter((item) => item.volume > 0)
@@ -2937,20 +3100,17 @@ function buildStats(logs: DailyLog[]) {
   const oldestRecentWeight = weights[Math.min(weights.length - 1, 6)]?.value ?? null
   const delta = latestWeight !== null && oldestRecentWeight !== null ? latestWeight - oldestRecentWeight : null
   const last7 = sorted.slice(0, 7)
-  const trainingDaysLast7 = last7.filter((log) => log.workoutType !== 'Rest' && (log.exercises.length || log.treadmillMinutes)).length
+  const trainingDaysLast7 = last7.filter((log) => log.workoutType !== 'Rest' && hasWorkoutData(log)).length
   const cardioMinutesLast7 = last7.reduce((sum, log) => sum + (parseDurationToMinutes(log.treadmillMinutes) ?? 0), 0)
   const cardioDistanceLast7 = last7.reduce((sum, log) => sum + (safeNumber(log.treadmillDistanceKm) ?? 0), 0)
-  const energyValues = last7.map((log) => safeNumber(log.postGymEnergy)).filter((value): value is number => value !== null)
-  const averageEnergy = average(energyValues)
 
   return {
     sevenDayAverage,
-    latestWeightLabel: latestWeight === null ? "No weigh-in" : latestWeight.toFixed(1) + " kg",
+    latestWeightLabel: latestWeight === null ? 'No weigh-in' : `${latestWeight.toFixed(1)} kg`,
     fourteenDayAverage,
     trainingDaysLast7,
     cardioMinutesLast7: Math.round(cardioMinutesLast7),
-    cardioDistanceLast7Label: cardioDistanceLast7.toFixed(2) + " km",
-    averageEnergy,
+    cardioDistanceLast7Label: `${cardioDistanceLast7.toFixed(2)} km`,
     weightDeltaText:
       delta === null
         ? 'Need more weigh-ins'
@@ -2961,26 +3121,64 @@ function buildStats(logs: DailyLog[]) {
 function buildCoachInsight(draft: DailyLog, stats: ReturnType<typeof buildStats>) {
   const insights: string[] = []
   const sleep = safeNumber(draft.sleepHours)
-  const hasPreWorkoutProtein = /egg|yoghurt|curd|milk|paneer|chicken|protein/i.test(`${draft.preWorkout} ${draft.meals.map((meal) => meal.description).join(' ')}`)
+  const hasProteinSignal =
+    draft.meals.some((meal) => meal.tags.includes('high-protein')) ||
+    /egg|yoghurt|curd|milk|paneer|chicken|protein|dal|chickpeas/i.test(
+      `${draft.preWorkout} ${draft.meals.map((meal) => meal.description).join(' ')}`,
+    )
 
-  if (!draft.weightKg) insights.push('You have not logged weight yet. Without the weigh-in, the trend view is blind.')
-  if (sleep !== null && sleep < 7) insights.push('Sleep is under 7 hours. Do not pretend food alone will fix poor recovery.')
-  if (!hasPreWorkoutProtein) insights.push('Your pre/post workout food looks protein-light. Add eggs, yoghurt/curd, milk, paneer, chicken, or a proper protein source.')
-  if (draft.exercises.length > 7) insights.push('This session is getting long. More exercises are not automatically more progress.')
-  if (stats.sevenDayAverage === null) insights.push('Save at least 7 weigh-ins before drawing conclusions from the scale.')
-  if (!insights.length) insights.push('Today looks structurally fine. The next improvement is consistency and progressive overload, not random changes.')
+  if (!draft.weightKg) {
+    insights.push('Weight is missing. That is fine occasionally, but trends need repeated weigh-ins.')
+  }
+
+  if (sleep !== null && sleep < 7) {
+    insights.push('Sleep is under 7 hours. Recovery quality will be harder to judge.')
+  }
+
+  if (draft.exercises.length === 0 && !draft.treadmillDistanceKm && !draft.treadmillMinutes) {
+    insights.push('No workout is logged yet. Paste the raw workout first, then save.')
+  }
+
+  if (!hasProteinSignal) {
+    insights.push('Protein signal looks weak. Tag high-protein meals or add a clear protein source.')
+  }
+
+  if (draft.exercises.length > 8) {
+    insights.push('This is a long session. More exercises are not automatically better progress.')
+  }
+
+  if (stats.sevenDayAverage === null) {
+    insights.push('Save at least 7 weigh-ins before judging the scale seriously.')
+  }
+
+  if (!insights.length) {
+    insights.push('Today is structurally fine. The useful question is whether load, reps, and consistency are improving.')
+  }
 
   return insights
 }
 
 function buildCoachPrompt(draft: DailyLog, logs: DailyLog[], question: string) {
   const stats = buildStats(logs)
+  const exerciseDashboard = buildExerciseDashboard(logs)
+  const nutritionTags = buildNutritionTagDashboard(logs)
+
   const recentLogs = sortLogs(logs).slice(0, 14).map((log) => ({
     date: log.date,
     weightKg: log.weightKg || null,
     waistSizeCm: log.waistSizeCm || null,
     workoutType: log.workoutType,
+    treadmillDistanceKm: log.treadmillDistanceKm || null,
     treadmillMinutes: log.treadmillMinutes || null,
+    exerciseCount: log.exercises.length,
+    exercises: log.exercises.map((exercise) => ({
+      name: exercise.name,
+      weight: exercise.weight || null,
+      unit: exercise.unit,
+      sets: exercise.sets || null,
+      reps: exercise.reps || null,
+    })),
+    mealTags: log.meals.flatMap((meal) => meal.tags),
   }))
 
   return `You are my direct fitness analyst. Be practical, blunt, and evidence-based.
@@ -2997,17 +3195,23 @@ Recent trend summary:
 - 14-day average weight: ${formatKg(stats.fourteenDayAverage)}
 - Training days in recent 7 logs: ${stats.trainingDaysLast7}/7
 - Cardio minutes in recent 7 logs: ${stats.cardioMinutesLast7}
+- Cardio distance in recent 7 logs: ${stats.cardioDistanceLast7Label}
+- Nutrition tag summary: ${nutritionTags.summary}
+
+Top exercise progression:
+${JSON.stringify(exerciseDashboard.progression.slice(0, 8), null, 2)}
 
 Recent logs:
 ${JSON.stringify(recentLogs, null, 2)}
 
 Give me:
-1. What went well today
+1. What went well in today’s workout
 2. What is weak or missing
-3. Likely reason for fatigue or scale movement
-4. Food correction for tomorrow
-5. Next workout recommendation
-6. One hard truth I may be avoiding`
+3. Whether the current training split looks balanced
+4. What the scale trend likely means, without overreacting
+5. What food/protein signal is missing
+6. Next workout recommendation
+7. One hard truth I may be avoiding`
 }
 
 export default App

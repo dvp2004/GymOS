@@ -158,7 +158,6 @@ button:disabled {
 }
 
 .nav-item,
-.mobile-tabs button,
 .chip,
 .primary-button,
 .ghost-button,
@@ -196,7 +195,6 @@ button:disabled {
 }
 
 .nav-item:hover,
-.mobile-tabs button:hover,
 .chip:hover,
 .ghost-button:hover,
 .file-import-button:hover,
@@ -205,7 +203,6 @@ button:disabled {
 }
 
 .nav-item.active,
-.mobile-tabs button.active,
 .chip.active {
   color: #11180a;
   background: linear-gradient(135deg, var(--acid), var(--acid-2));
@@ -405,10 +402,6 @@ label {
   font-weight: 800;
 }
 
-.mobile-tabs {
-  display: none;
-}
-
 .view-grid,
 .today-layout {
   display: grid;
@@ -453,8 +446,7 @@ label {
   padding: 22px;
 }
 
-.command-card,
-.hero-card {
+.command-card {
   position: relative;
   grid-column: span 2;
   min-height: 286px;
@@ -473,8 +465,7 @@ label {
   box-shadow: var(--shadow);
 }
 
-.command-card::after,
-.hero-card::after {
+.command-card::after {
   content: '';
   position: absolute;
   right: -9rem;
@@ -485,8 +476,7 @@ label {
   background: rgba(217, 255, 66, 0.075);
 }
 
-.command-content h3,
-.hero-card h3 {
+.command-content h3 {
   max-width: 720px;
   margin: 0 0 16px;
   font-size: clamp(2.25rem, 5vw, 5.2rem);
@@ -494,8 +484,7 @@ label {
   letter-spacing: -0.085em;
 }
 
-.command-content p,
-.hero-card p {
+.command-content p {
   max-width: 670px;
   margin: 0;
   color: var(--text-soft);
@@ -510,8 +499,7 @@ label {
   margin-top: 22px;
 }
 
-.readiness-ring,
-.orbital-stat {
+.readiness-ring {
   position: relative;
   z-index: 1;
   aspect-ratio: 1;
@@ -526,8 +514,7 @@ label {
   box-shadow: 0 24px 60px rgba(217, 255, 66, 0.12);
 }
 
-.readiness-ring::after,
-.orbital-stat::after {
+.readiness-ring::after {
   content: '';
   position: absolute;
   inset: 12px;
@@ -536,23 +523,19 @@ label {
 }
 
 .readiness-ring strong,
-.readiness-ring span,
-.orbital-stat strong,
-.orbital-stat span {
+.readiness-ring span {
   position: relative;
   z-index: 1;
   display: block;
 }
 
-.readiness-ring strong,
-.orbital-stat strong {
+.readiness-ring strong {
   font-size: 3rem;
   line-height: 0.9;
   letter-spacing: -0.08em;
 }
 
-.readiness-ring span,
-.orbital-stat span {
+.readiness-ring span {
   max-width: 130px;
   color: var(--text-muted);
   font-size: 0.84rem;
@@ -621,8 +604,7 @@ label {
     rgba(255, 255, 255, 0.035);
 }
 
-.mini-sparkline,
-.sparkline {
+.mini-sparkline {
   width: 100%;
   min-height: 48px;
   margin-top: 10px;
@@ -654,6 +636,36 @@ label {
 
 .form-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.raw-workout-panel {
+  display: grid;
+  gap: 1rem;
+  border-color: rgba(217, 255, 66, 0.2);
+  background:
+    radial-gradient(circle at top right, rgba(217, 255, 66, 0.12), transparent 18rem),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.045)),
+    rgba(255, 255, 255, 0.035);
+}
+
+.raw-workout-box {
+  min-height: 260px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.raw-workout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.raw-workout-actions span {
+  color: var(--text-soft);
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .template-row {
@@ -1235,7 +1247,7 @@ label {
   }
 
   .workspace {
-    padding: 18px 14px calc(108px + env(safe-area-inset-bottom));
+    padding: 18px 14px calc(104px + env(safe-area-inset-bottom));
   }
 
   .topbar {
@@ -1271,59 +1283,23 @@ label {
     min-height: 52px;
   }
 
-  .mobile-tabs {
-    position: fixed;
-    z-index: 30;
-    right: 12px;
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    left: 12px;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-    padding: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 30px;
-    background: rgba(5, 6, 7, 0.86);
-    backdrop-filter: blur(30px);
-    box-shadow: var(--shadow);
-  }
-
-  .mobile-tabs button {
-    display: grid;
-    place-items: center;
-    gap: 3px;
-    min-height: 56px;
-    color: var(--text-muted);
-    background: transparent;
-    font-size: 0.68rem;
-    font-weight: 900;
-  }
-
-  .mobile-tabs span {
-    font-size: 0.85rem;
-  }
-
   .view-grid,
   .today-layout,
-  .command-card,
-  .hero-card {
+  .command-card {
     grid-template-columns: 1fr;
   }
 
   .span-2,
-  .command-card,
-  .hero-card {
+  .command-card {
     grid-column: span 1;
   }
 
-  .command-card,
-  .hero-card {
+  .command-card {
     min-height: auto;
     padding: 22px;
   }
 
-  .readiness-ring,
-  .orbital-stat {
+  .readiness-ring {
     width: min(210px, 65vw);
     margin: 0 auto;
   }
@@ -1367,8 +1343,7 @@ label {
     padding: 17px;
   }
 
-  .command-content h3,
-  .hero-card h3 {
+  .command-content h3 {
     font-size: clamp(2.25rem, 14vw, 3.85rem);
   }
 
@@ -1637,291 +1612,7 @@ label {
   }
 }
 
-/* v14-fix: keep mobile tab island docked to the bottom, not floating mid-page */
-@media (max-width: 900px) {
-  .workspace {
-    padding-bottom: calc(128px + env(safe-area-inset-bottom));
-  }
-
-  .today-layout,
-  .view-grid {
-    padding-bottom: calc(40px + env(safe-area-inset-bottom));
-  }
-
-  .mobile-tabs {
-    position: fixed;
-    left: 50%;
-    right: auto;
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    top: auto;
-    z-index: 9999;
-
-    display: flex;
-    width: min(calc(100vw - 24px), 520px);
-    min-height: 64px;
-    padding: 8px;
-    gap: 6px;
-
-    transform: translateX(-50%);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 999px;
-    background:
-      linear-gradient(180deg, rgba(18, 22, 28, 0.92), rgba(7, 9, 12, 0.92)),
-      rgba(5, 6, 7, 0.92);
-    box-shadow:
-      0 20px 60px rgba(0, 0, 0, 0.55),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-  }
-
-  .mobile-tabs button {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 48px;
-    padding: 0 6px;
-
-    display: grid;
-    place-items: center;
-    gap: 2px;
-
-    border-radius: 999px;
-    font-size: 0.68rem;
-    font-weight: 900;
-    line-height: 1;
-    color: var(--text-muted, rgba(255, 255, 255, 0.62));
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .mobile-tabs button span {
-    display: block;
-    font-size: 0.82rem;
-    line-height: 1;
-  }
-
-  .mobile-tabs button.active {
-    color: #11180a;
-    background: linear-gradient(135deg, var(--acid, #d9ff42), var(--acid-2, #9dff7a));
-    box-shadow: 0 10px 26px rgba(217, 255, 66, 0.18);
-  }
-
-  .mobile-tabs button:hover {
-    transform: none;
-  }
-
-  .collapsible-form-panel,
-  .form-panel:last-child,
-  .panel:last-child {
-    margin-bottom: calc(72px + env(safe-area-inset-bottom));
-  }
-}
-
-@media (min-width: 901px) {
-  .mobile-tabs {
-    display: none;
-  }
-}
-
-/* v14-fix-2: true mobile app dock, outside the scrollable workspace */
-@media (max-width: 900px) {
-  body {
-    overflow-x: hidden;
-  }
-
-  .workspace {
-    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .today-layout::after,
-  .view-grid::after {
-    content: '';
-    display: block;
-    grid-column: 1 / -1;
-    height: calc(96px + env(safe-area-inset-bottom));
-  }
-
-  .mobile-tabs.mobile-tabs-fixed {
-    position: fixed !important;
-    left: 50% !important;
-    right: auto !important;
-    top: auto !important;
-    bottom: calc(14px + env(safe-area-inset-bottom)) !important;
-    z-index: 2147483647 !important;
-
-    display: flex !important;
-    width: min(calc(100vw - 24px), 520px) !important;
-    height: 66px !important;
-    min-height: 66px !important;
-    max-height: 66px !important;
-    padding: 8px !important;
-    gap: 6px !important;
-
-    transform: translate3d(-50%, 0, 0) !important;
-    margin: 0 !important;
-
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    border-radius: 999px !important;
-    background:
-      linear-gradient(180deg, rgba(18, 22, 28, 0.96), rgba(6, 8, 11, 0.96)),
-      rgba(5, 6, 7, 0.96) !important;
-    box-shadow:
-      0 22px 70px rgba(0, 0, 0, 0.62),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-    backdrop-filter: blur(26px) !important;
-    -webkit-backdrop-filter: blur(26px) !important;
-
-    pointer-events: auto !important;
-  }
-
-  .mobile-tabs.mobile-tabs-fixed button {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-    min-height: 50px !important;
-    height: 50px !important;
-    padding: 0 6px !important;
-
-    display: grid !important;
-    place-items: center !important;
-    gap: 2px !important;
-
-    border: 0 !important;
-    border-radius: 999px !important;
-    color: var(--text-muted, rgba(255, 255, 255, 0.62)) !important;
-    background: transparent !important;
-    box-shadow: none !important;
-
-    font-size: 0.68rem !important;
-    font-weight: 900 !important;
-    line-height: 1 !important;
-    text-align: center !important;
-  }
-
-  .mobile-tabs.mobile-tabs-fixed button span {
-    display: block !important;
-    font-size: 0.82rem !important;
-    line-height: 1 !important;
-  }
-
-  .mobile-tabs.mobile-tabs-fixed button.active {
-    color: #11180a !important;
-    background: linear-gradient(135deg, var(--acid, #d9ff42), var(--acid-2, #9dff7a)) !important;
-    box-shadow: 0 10px 26px rgba(217, 255, 66, 0.2) !important;
-  }
-
-  .mobile-tabs.mobile-tabs-fixed button:hover {
-    transform: none !important;
-  }
-}
-
-@media (min-width: 901px) {
-  .mobile-tabs.mobile-tabs-fixed {
-    display: none !important;
-  }
-}
-
-/* v14-fix-3: kill old mobile-tabs and use a clean fixed bottom dock */
-@media (max-width: 900px) {
-  .mobile-tabs {
-    display: none !important;
-    visibility: hidden !important;
-    pointer-events: none !important;
-  }
-
-  .app-shell {
-    display: block !important;
-    min-height: 100dvh !important;
-    padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .workspace {
-    width: 100% !important;
-    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .today-layout,
-  .view-grid {
-    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .bottom-dock {
-    position: fixed !important;
-    left: 12px !important;
-    right: 12px !important;
-    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
-    top: auto !important;
-    z-index: 2147483647 !important;
-
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 6px !important;
-
-    height: 66px !important;
-    max-width: 520px !important;
-    margin: 0 auto !important;
-    padding: 8px !important;
-
-    border-radius: 999px !important;
-    border: 1px solid rgba(255, 255, 255, 0.14) !important;
-    background:
-      linear-gradient(180deg, rgba(18, 22, 28, 0.98), rgba(6, 8, 11, 0.98)),
-      rgba(5, 6, 7, 0.98) !important;
-    box-shadow:
-      0 22px 70px rgba(0, 0, 0, 0.68),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-    backdrop-filter: blur(26px) !important;
-    -webkit-backdrop-filter: blur(26px) !important;
-
-    transform: none !important;
-    translate: none !important;
-    contain: none !important;
-  }
-
-  .bottom-dock button {
-    flex: 1 1 0 !important;
-    min-width: 0 !important;
-    height: 50px !important;
-    min-height: 50px !important;
-
-    display: grid !important;
-    place-items: center !important;
-    gap: 2px !important;
-
-    border: 0 !important;
-    border-radius: 999px !important;
-    padding: 0 5px !important;
-
-    color: var(--text-muted, rgba(255, 255, 255, 0.62)) !important;
-    background: transparent !important;
-    box-shadow: none !important;
-
-    font-size: 0.66rem !important;
-    font-weight: 900 !important;
-    line-height: 1 !important;
-    text-align: center !important;
-  }
-
-  .bottom-dock button span {
-    display: block !important;
-    font-size: 0.82rem !important;
-    line-height: 1 !important;
-  }
-
-  .bottom-dock button.active {
-    color: #11180a !important;
-    background: linear-gradient(135deg, var(--acid, #d9ff42), var(--acid-2, #9dff7a)) !important;
-    box-shadow: 0 10px 26px rgba(217, 255, 66, 0.2) !important;
-  }
-}
-
-@media (min-width: 901px) {
-  .bottom-dock {
-    display: none !important;
-  }
-}
-
-/* v14-fix-4: body-level portal dock, fully detached from app scroll layout */
+/* Current mobile dock: rendered through React portal into document.body */
 @media (max-width: 900px) {
   .mobile-tabs,
   .bottom-dock {
@@ -1930,18 +1621,9 @@ label {
     pointer-events: none !important;
   }
 
-.workspace {
-  padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
-}
-
-.today-layout,
-.view-grid {
-  padding-bottom: 0 !important;
-}
-
-.app-shell {
-  padding-bottom: 0 !important;
-}
+  .workspace {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important;
+  }
 
   .gymos-bottom-dock {
     position: fixed !important;
@@ -1972,11 +1654,6 @@ label {
       inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
     backdrop-filter: blur(26px) !important;
     -webkit-backdrop-filter: blur(26px) !important;
-
-    transform: translateZ(0) !important;
-    translate: none !important;
-    will-change: auto !important;
-    contain: none !important;
   }
 
   .gymos-bottom-dock button {
@@ -2011,7 +1688,7 @@ label {
 
   .gymos-bottom-dock button.active {
     color: #11180a !important;
-    background: linear-gradient(135deg, var(--acid, #d9ff42), var(--acid-2, #9dff7a)) !important;
+    background: linear-gradient(135deg, var(--acid), var(--acid-2)) !important;
     box-shadow: 0 10px 26px rgba(217, 255, 66, 0.2) !important;
   }
 }
@@ -2019,135 +1696,5 @@ label {
 @media (min-width: 901px) {
   .gymos-bottom-dock {
     display: none !important;
-  }
-}
-
-.active-workout-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 1.25rem;
-  align-items: center;
-  padding: 1.25rem;
-  border: 1px solid rgba(217, 255, 66, 0.18);
-  border-radius: var(--radius-xl, 34px);
-  background:
-    radial-gradient(circle at top right, rgba(217, 255, 66, 0.16), transparent 18rem),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04)),
-    rgba(255, 255, 255, 0.04);
-  box-shadow: var(--shadow-soft, 0 16px 48px rgba(0, 0, 0, 0.32));
-}
-
-.active-workout-panel.live {
-  border-color: rgba(217, 255, 66, 0.34);
-  box-shadow:
-    0 0 0 1px rgba(217, 255, 66, 0.08),
-    0 22px 70px rgba(217, 255, 66, 0.08),
-    var(--shadow-soft, 0 16px 48px rgba(0, 0, 0, 0.32));
-}
-
-.active-workout-panel h3 {
-  margin: 0;
-  color: var(--text-strong, #fff);
-  font-size: clamp(2rem, 6vw, 4.4rem);
-  line-height: 0.9;
-  letter-spacing: -0.08em;
-}
-
-.active-workout-panel p {
-  margin: 0.65rem 0 0;
-  color: var(--text-muted, rgba(255, 255, 255, 0.65));
-  line-height: 1.45;
-}
-
-.workout-progress-block {
-  display: grid;
-  justify-items: center;
-  gap: 0.9rem;
-}
-
-.workout-progress-ring {
-  --progress: 0%;
-  width: 8.5rem;
-  aspect-ratio: 1;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  position: relative;
-  background:
-    conic-gradient(var(--acid, #d9ff42) var(--progress), rgba(255, 255, 255, 0.1) 0);
-  box-shadow: 0 18px 48px rgba(217, 255, 66, 0.12);
-}
-
-.workout-progress-ring::after {
-  content: '';
-  position: absolute;
-  inset: 0.7rem;
-  border-radius: inherit;
-  background: rgba(5, 6, 7, 0.9);
-}
-
-.workout-progress-ring strong,
-.workout-progress-ring span {
-  position: relative;
-  z-index: 1;
-  display: block;
-  text-align: center;
-}
-
-.workout-progress-ring strong {
-  color: var(--text-strong, #fff);
-  font-size: 1.7rem;
-  line-height: 1;
-  letter-spacing: -0.06em;
-}
-
-.workout-progress-ring span {
-  color: var(--text-muted, rgba(255, 255, 255, 0.64));
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.active-workout-actions {
-  display: flex;
-  gap: 0.55rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.set-dots button {
-  display: grid;
-  place-items: center;
-  color: var(--text-muted, rgba(255, 255, 255, 0.65));
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.set-dots button.done {
-  color: #11180a;
-}
-
-@media (max-width: 720px) {
-  .active-workout-panel {
-    grid-template-columns: 1fr;
-  }
-
-  .workout-progress-block {
-    grid-template-columns: auto 1fr;
-    justify-items: stretch;
-    align-items: center;
-  }
-
-  .workout-progress-ring {
-    width: 6.5rem;
-  }
-
-  .active-workout-actions {
-    justify-content: flex-end;
-  }
-
-  .active-workout-actions .primary-button,
-  .active-workout-actions .ghost-button {
-    flex: 1;
   }
 }
