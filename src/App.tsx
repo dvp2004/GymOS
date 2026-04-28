@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { ChangeEvent, FormEvent } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from './lib/supabase'
@@ -683,15 +684,17 @@ function normaliseImportedLog(item: unknown): DailyLog {
   }
 }
 
-function MobileTabBar({
+function BottomDock({
   activeTab,
   setActiveTab,
 }: {
   activeTab: Tab
   setActiveTab: (tab: Tab) => void
 }) {
-  return (
-    <nav className="mobile-tabs mobile-tabs-fixed" aria-label="Mobile navigation">
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
+    <nav className="gymos-bottom-dock" aria-label="Mobile navigation">
       {tabs.map((tab) => (
         <button
           key={tab.id}
@@ -703,7 +706,8 @@ function MobileTabBar({
           {tab.label}
         </button>
       ))}
-    </nav>
+    </nav>,
+    document.body,
   )
 }
 
@@ -1076,7 +1080,7 @@ function App() {
         )}
       </section>
 
-      <MobileTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <BottomDock activeTab={activeTab} setActiveTab={setActiveTab} />
     </main>
   )
 }

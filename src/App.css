@@ -1819,3 +1819,199 @@ label {
     display: none !important;
   }
 }
+
+/* v14-fix-3: kill old mobile-tabs and use a clean fixed bottom dock */
+@media (max-width: 900px) {
+  .mobile-tabs {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .app-shell {
+    display: block !important;
+    min-height: 100dvh !important;
+    padding-bottom: calc(120px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .workspace {
+    width: 100% !important;
+    padding-bottom: calc(150px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .today-layout,
+  .view-grid {
+    padding-bottom: calc(90px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .bottom-dock {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    top: auto !important;
+    z-index: 2147483647 !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+
+    height: 66px !important;
+    max-width: 520px !important;
+    margin: 0 auto !important;
+    padding: 8px !important;
+
+    border-radius: 999px !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    background:
+      linear-gradient(180deg, rgba(18, 22, 28, 0.98), rgba(6, 8, 11, 0.98)),
+      rgba(5, 6, 7, 0.98) !important;
+    box-shadow:
+      0 22px 70px rgba(0, 0, 0, 0.68),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(26px) !important;
+    -webkit-backdrop-filter: blur(26px) !important;
+
+    transform: none !important;
+    translate: none !important;
+    contain: none !important;
+  }
+
+  .bottom-dock button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    height: 50px !important;
+    min-height: 50px !important;
+
+    display: grid !important;
+    place-items: center !important;
+    gap: 2px !important;
+
+    border: 0 !important;
+    border-radius: 999px !important;
+    padding: 0 5px !important;
+
+    color: var(--text-muted, rgba(255, 255, 255, 0.62)) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+
+    font-size: 0.66rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+  }
+
+  .bottom-dock button span {
+    display: block !important;
+    font-size: 0.82rem !important;
+    line-height: 1 !important;
+  }
+
+  .bottom-dock button.active {
+    color: #11180a !important;
+    background: linear-gradient(135deg, var(--acid, #d9ff42), var(--acid-2, #9dff7a)) !important;
+    box-shadow: 0 10px 26px rgba(217, 255, 66, 0.2) !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .bottom-dock {
+    display: none !important;
+  }
+}
+
+/* v14-fix-4: body-level portal dock, fully detached from app scroll layout */
+@media (max-width: 900px) {
+  .mobile-tabs,
+  .bottom-dock {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .app-shell,
+  .workspace,
+  .today-layout,
+  .view-grid {
+    padding-bottom: calc(160px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .gymos-bottom-dock {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    top: auto !important;
+    z-index: 2147483647 !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+
+    width: auto !important;
+    max-width: 520px !important;
+    height: 66px !important;
+    margin: 0 auto !important;
+    padding: 8px !important;
+
+    border-radius: 999px !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    background:
+      linear-gradient(180deg, rgba(18, 22, 28, 0.98), rgba(6, 8, 11, 0.98)),
+      rgba(5, 6, 7, 0.98) !important;
+    box-shadow:
+      0 22px 70px rgba(0, 0, 0, 0.7),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(26px) !important;
+    -webkit-backdrop-filter: blur(26px) !important;
+
+    transform: translateZ(0) !important;
+    translate: none !important;
+    will-change: auto !important;
+    contain: none !important;
+  }
+
+  .gymos-bottom-dock button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    height: 50px !important;
+    min-height: 50px !important;
+
+    display: grid !important;
+    place-items: center !important;
+    gap: 2px !important;
+
+    border: 0 !important;
+    border-radius: 999px !important;
+    padding: 0 5px !important;
+
+    color: var(--text-muted, rgba(255, 255, 255, 0.62)) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+
+    font-size: 0.66rem !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+  }
+
+  .gymos-bottom-dock button span {
+    display: block !important;
+    font-size: 0.82rem !important;
+    line-height: 1 !important;
+  }
+
+  .gymos-bottom-dock button.active {
+    color: #11180a !important;
+    background: linear-gradient(135deg, var(--acid, #d9ff42), var(--acid-2, #9dff7a)) !important;
+    box-shadow: 0 10px 26px rgba(217, 255, 66, 0.2) !important;
+  }
+}
+
+@media (min-width: 901px) {
+  .gymos-bottom-dock {
+    display: none !important;
+  }
+}
