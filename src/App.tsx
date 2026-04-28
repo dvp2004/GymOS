@@ -3756,4 +3756,11 @@ Give me:
 8. One hard truth I may be avoiding`
 }
 
+export {
+  canonicalExerciseName,
+  displayExerciseName,
+  inferWorkoutTypeFromExercises,
+  parseRawWorkoutText,
+}
+
 export default App
