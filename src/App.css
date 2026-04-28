@@ -1580,3 +1580,123 @@ label {
     display: none !important;
   }
 }
+
+.heatmap-score.good {
+  color: #06130d;
+  background: linear-gradient(135deg, #7cffb2, #28e17d);
+}
+
+.heatmap-score.medium {
+  color: #231909;
+  background: linear-gradient(135deg, #ffe083, #ffb84d);
+}
+
+.heatmap-score.low {
+  color: #fff1f1;
+  background: rgba(255, 86, 86, 0.18);
+  border-color: rgba(255, 86, 86, 0.35);
+}
+
+.heatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.heatmap-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.heatmap-legend .heat-cell {
+  width: 14px;
+  min-height: 14px;
+  display: inline-block;
+}
+
+.heatmap-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.heatmap-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.deep-dive-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.deep-dive-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(217, 255, 66, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(217, 255, 66, 0.08), transparent 12rem),
+    rgba(255, 255, 255, 0.045);
+}
+
+.deep-dive-card span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.deep-dive-card strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-strong);
+  font-size: 1.6rem;
+  letter-spacing: -0.05em;
+}
+
+.deep-dive-card p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.deep-dive-stats {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.performance-badge.new {
+  color: #071018;
+  background: linear-gradient(135deg, #75d7ff, #75a7ff);
+  box-shadow:
+    0 0 20px rgba(117, 167, 255, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.26);
+}
+
+@media (max-width: 720px) {
+  .deep-dive-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-legend {
+    gap: 0.5rem;
+  }
+
+  .heatmap-weekdays {
+    gap: 5px;
+    font-size: 0.62rem;
+  }
+}

@@ -112,7 +112,7 @@ type ExerciseHistorySummary = {
 
 type ExercisePerformanceBadge = {
   label: string
-  tone: 'pr' | 'up' | 'match' | 'down'
+  tone: 'new' | 'pr' | 'up' | 'match' | 'down'
 }
 
 type ParsedWorkoutText = {
@@ -1962,6 +1962,9 @@ function TrendsView({
   const coverage = useMemo(() => buildDataCoverage(logs), [logs])
   const heatmap = useMemo(() => buildConsistencyHeatmap(logs), [logs])
   const nutritionTags = useMemo(() => buildNutritionTagDashboard(logs), [logs])
+  const exerciseDeepDive = useMemo(() => buildExerciseDeepDive(logs), [logs])
+  const [selectedExercise, setSelectedExercise] = useState('')
+  const selectedExerciseInsight = exerciseDeepDive.find((exercise) => exercise.canonicalName === selectedExercise) ?? exerciseDeepDive[0] ?? null
 
   async function handleImport() {
     try {
@@ -2030,17 +2033,39 @@ function TrendsView({
             <p className="eyebrow">Consistency</p>
             <h3>8-week training heatmap</h3>
           </div>
-          <span className="status-pill">{heatmap.filter((day) => day.level > 0).length} active days</span>
+          <span className={`status-pill heatmap-score ${heatmap.tone}`}>
+            {heatmap.activeDays}/{heatmap.totalDays} active
+          </span>
         </div>
+
+        <div className="heatmap-legend">
+          <span><i className="heat-cell level-1" /> Light / short</span>
+          <span><i className="heat-cell level-2" /> Normal</span>
+          <span><i className="heat-cell level-3" /> Higher volume</span>
+          <span><i className="heat-cell lower" /> Lower day</span>
+          <span><i className="heat-cell cardio" /> Cardio emphasis</span>
+        </div>
+
+        <div className="heatmap-weekdays" aria-hidden="true">
+          {heatmap.weekdays.map((day) => (
+            <span key={day}>{day}</span>
+          ))}
+        </div>
+
         <div className="heatmap-grid" aria-label="Workout consistency heatmap">
-          {heatmap.map((day) => (
+          {heatmap.days.map((day) => (
             <span
-              className={`heat-cell level-${day.level} ${day.type.toLowerCase()}`}
+              className={`heat-cell level-${day.level} ${day.type.toLowerCase()} ${day.hasCardio ? 'cardio' : ''}`}
               key={day.date}
               title={`${formatDateShort(day.date)} · ${day.type}`}
             />
           ))}
         </div>
+
+        <p className="helper-copy tight">
+          Colour shows workout type/intensity. Empty cells are non-training or unlogged days.
+        </p>
+
         <div className="coverage-grid">
           <article>
             <span>Weight coverage</span>
@@ -2090,6 +2115,52 @@ function TrendsView({
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="panel span-2">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Hidden signal</p>
+            <h3>Exercise deep dive</h3>
+          </div>
+          <span className="status-pill">{exerciseDeepDive.length} movements</span>
+        </div>
+
+        {exerciseDeepDive.length === 0 ? (
+          <div className="empty-state">Log repeated exercises to unlock movement-level insights.</div>
+        ) : (
+          <div className="deep-dive-grid">
+            <label>
+              Movement
+              <select value={selectedExercise} onChange={(event) => setSelectedExercise(event.target.value)}>
+                {exerciseDeepDive.map((exercise) => (
+                  <option key={exercise.canonicalName} value={exercise.canonicalName}>
+                    {exercise.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {selectedExerciseInsight && (
+              <article className="deep-dive-card">
+                <div>
+                  <span>Momentum</span>
+                  <strong>{selectedExerciseInsight.momentum}</strong>
+                </div>
+                <p>{selectedExerciseInsight.hiddenInsight}</p>
+                <div className="deep-dive-stats">
+                  <span>Sessions: {selectedExerciseInsight.sessions}</span>
+                  <span>First: {selectedExerciseInsight.firstLabel}</span>
+                  <span>Latest: {selectedExerciseInsight.latestLabel}</span>
+                  <span>
+                    Best: {selectedExerciseInsight.bestLabel}
+                    {selectedExerciseInsight.bestDate ? ` · ${formatDateShort(selectedExerciseInsight.bestDate)}` : ''}
+                  </span>
+                </div>
+              </article>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="panel span-2">
@@ -2489,20 +2560,121 @@ function buildConsistencyHeatmap(logs: DailyLog[]) {
   const sorted = sortLogs(logs)
   const latestDate = sorted[0]?.date ?? toInputDate(new Date())
   const latest = new Date(`${latestDate}T00:00:00`)
-  const start = new Date(latest)
-  start.setDate(latest.getDate() - 55)
 
-  return Array.from({ length: 56 }).map((_, index) => {
+  const weekStart = new Date(latest)
+  weekStart.setDate(latest.getDate() - ((latest.getDay() + 6) % 7))
+
+  const start = new Date(weekStart)
+  start.setDate(weekStart.getDate() - 49)
+
+  const days = Array.from({ length: 56 }).map((_, index) => {
     const date = new Date(start)
     date.setDate(start.getDate() + index)
     const iso = toInputDate(date)
     const log = logs.find((item) => item.date === iso)
+    const exerciseCount = log?.exercises.length ?? 0
+    const hasCardio = Boolean(log?.treadmillDistanceKm || log?.treadmillMinutes)
+
     return {
       date: iso,
-      level: log && hasWorkoutData(log) ? Math.min(3, Math.max(1, log.exercises.length > 6 ? 3 : log.exercises.length > 2 ? 2 : 1)) : 0,
+      weekday: date.toLocaleDateString('en-GB', { weekday: 'short' }),
+      dayNumber: date.getDate(),
+      level: log && hasWorkoutData(log) ? Math.min(3, Math.max(1, exerciseCount > 6 ? 3 : exerciseCount > 2 ? 2 : 1)) : 0,
       type: log?.workoutType ?? 'Rest',
+      hasCardio,
     }
   })
+
+  const activeDays = days.filter((day) => day.level > 0).length
+  const ratio = activeDays / days.length
+
+  const tone = ratio >= 0.6 ? 'good' : ratio >= 0.35 ? 'medium' : 'low'
+
+  return {
+    days,
+    activeDays,
+    totalDays: days.length,
+    tone,
+    weekdays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  }
+}
+
+function buildExerciseDeepDive(logs: DailyLog[]) {
+  const byExercise = new Map<
+    string,
+    Array<{
+      date: string
+      exercise: ExerciseEntry
+      score: number | null
+      weight: number | null
+      reps: number | null
+      sets: number | null
+    }>
+  >()
+
+  for (const log of [...logs].sort((a, b) => a.date.localeCompare(b.date))) {
+    for (const exercise of log.exercises) {
+      const canonical = canonicalExerciseName(exercise.name)
+      if (!canonical) continue
+
+      const items = byExercise.get(canonical) ?? []
+      items.push({
+        date: log.date,
+        exercise,
+        score: getExerciseScore(exercise),
+        weight: firstNumber(exercise.weight),
+        reps: firstNumber(exercise.reps),
+        sets: firstNumber(exercise.sets),
+      })
+      byExercise.set(canonical, items)
+    }
+  }
+
+  return [...byExercise.entries()]
+    .map(([canonicalName, entries]) => {
+      const first = entries[0]
+      const latest = entries[entries.length - 1]
+
+      const best = entries.reduce<typeof entries[number] | null>((winner, entry) => {
+        if (!winner) return entry
+        return (entry.score ?? -Infinity) > (winner.score ?? -Infinity) ? entry : winner
+      }, null)
+
+      const previous = entries.length >= 2 ? entries[entries.length - 2] : null
+      const latestScore = latest.score
+      const previousScore = previous?.score ?? null
+
+      const momentum =
+        latestScore !== null && previousScore !== null
+          ? latestScore > previousScore
+            ? 'Improving'
+            : latestScore < previousScore
+              ? 'Dropped vs last'
+              : 'Flat'
+          : 'Need more data'
+
+      return {
+        canonicalName,
+        name: displayExerciseName(canonicalName),
+        sessions: entries.length,
+        firstDate: first.date,
+        latestDate: latest.date,
+        firstLabel: formatExerciseEntry(first.exercise),
+        latestLabel: formatExerciseEntry(latest.exercise),
+        bestLabel: best ? formatExerciseEntry(best.exercise) : '—',
+        bestDate: best?.date ?? null,
+        momentum,
+        hiddenInsight:
+          entries.length < 3
+            ? 'Too little data. Keep logging this movement.'
+            : momentum === 'Improving'
+              ? 'This movement is trending positively. Keep it in rotation.'
+              : momentum === 'Dropped vs last'
+                ? 'Performance dipped. Check sleep, food, fatigue, or whether this came later in the session.'
+                : 'Load is flat. Progress may need more reps, cleaner form, or a small load increase.',
+      }
+    })
+    .sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name))
 }
 
 const EXERCISE_ALIASES: Array<{
@@ -2666,16 +2838,28 @@ function formatExerciseEntry(exercise: ExerciseEntry) {
   return `${load}, ${scheme}`
 }
 
-function getExerciseScore(exercise: ExerciseEntry) {
+function normalisedLoadInLbs(exercise: ExerciseEntry) {
   const weight = firstNumber(exercise.weight)
+
+  if (weight === null) return null
+  if (exercise.unit === 'kg') return weight * 2.20462
+  if (exercise.unit === 'bodyweight') return null
+
+  return weight
+}
+
+function getExerciseScore(exercise: ExerciseEntry) {
+  const load = normalisedLoadInLbs(exercise)
   const sets = firstNumber(exercise.sets)
   const reps = firstNumber(exercise.reps)
 
-  if (weight !== null && sets !== null && reps !== null) {
-    return weight * sets * reps
+  if (load !== null) {
+    return load * 1000 + (reps ?? 0) * 10 + (sets ?? 0)
   }
 
-  if (weight !== null) return weight
+  if (reps !== null || sets !== null) {
+    return (reps ?? 0) * 10 + (sets ?? 0)
+  }
 
   return null
 }
@@ -2684,9 +2868,15 @@ function getExercisePerformanceBadge(
   exercise: ExerciseEntry,
   history: ExerciseHistorySummary | undefined,
 ): ExercisePerformanceBadge | null {
-  if (!history) return null
+  const canonical = canonicalExerciseName(exercise.name)
+  if (!canonical) return null
 
   const currentScore = getExerciseScore(exercise)
+
+  if (!history) {
+    return { label: 'NEW', tone: 'new' }
+  }
+
   if (currentScore === null) return null
 
   if (history.bestScore !== null && currentScore > history.bestScore) {
@@ -2709,7 +2899,16 @@ function getExercisePerformanceBadge(
 }
 
 function buildExerciseDashboard(logs: DailyLog[]) {
-  const byExercise = new Map<string, Array<{ date: string; exercise: ExerciseEntry; weight: number | null; volume: number | null }>>()
+  const byExercise = new Map<
+    string,
+    Array<{
+      date: string
+      exercise: ExerciseEntry
+      weight: number | null
+      score: number | null
+      volume: number | null
+    }>
+  >()
 
   for (const log of [...logs].sort((a, b) => a.date.localeCompare(b.date))) {
     for (const exercise of log.exercises) {
@@ -2719,10 +2918,11 @@ function buildExerciseDashboard(logs: DailyLog[]) {
       const weight = firstNumber(exercise.weight)
       const sets = firstNumber(exercise.sets)
       const reps = firstNumber(exercise.reps)
+      const score = getExerciseScore(exercise)
       const volume = weight !== null && weight > 0 && sets !== null && reps !== null ? weight * sets * reps : null
       const items = byExercise.get(name) ?? []
 
-      items.push({ date: log.date, exercise, weight, volume })
+      items.push({ date: log.date, exercise, weight, score, volume })
       byExercise.set(name, items)
     }
   }
@@ -2732,10 +2932,10 @@ function buildExerciseDashboard(logs: DailyLog[]) {
     .map(([name, entries]) => {
       const first = entries[0]
       const latest = entries[entries.length - 1]
-      const weighted = entries.filter((entry) => entry.weight !== null)
-      const best = weighted.reduce<typeof weighted[number] | null>((winner, entry) => {
+
+      const best = entries.reduce<typeof entries[number] | null>((winner, entry) => {
         if (!winner) return entry
-        return (entry.weight ?? 0) > (winner.weight ?? 0) ? entry : winner
+        return (entry.score ?? -Infinity) > (winner.score ?? -Infinity) ? entry : winner
       }, null)
 
       const firstWeight = first.weight
@@ -2749,7 +2949,8 @@ function buildExerciseDashboard(logs: DailyLog[]) {
         sessions: entries.length,
         firstLabel: formatExerciseEntry(first.exercise),
         latestLabel: formatExerciseEntry(latest.exercise),
-        bestLabel: best ? formatLoad(best.weight, best.exercise.unit) : '—',
+        bestLabel: best ? formatExerciseEntry(best.exercise) : '—',
+        bestDate: best?.date ?? null,
         deltaLabel:
           delta === null
             ? 'Track load consistently to see direction.'
@@ -2757,7 +2958,7 @@ function buildExerciseDashboard(logs: DailyLog[]) {
               ? `Up ${delta.toFixed(delta % 1 === 0 ? 0 : 1)} ${unit} since first log.`
               : delta < 0
                 ? `Down ${Math.abs(delta).toFixed(delta % 1 === 0 ? 0 : 1)} ${unit} since first log.`
-                : 'Load is flat; look for rep quality, form, or volume improvements.',
+                : 'Load is flat; look for rep quality, form, or consistency improvements.',
       }
     })
     .sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name))
