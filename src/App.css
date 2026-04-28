@@ -1931,7 +1931,7 @@ label {
   }
 
 .workspace {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom)) !important;
 }
 
 .today-layout,
