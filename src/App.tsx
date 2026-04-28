@@ -1959,8 +1959,11 @@ function TrendsView({
   const exerciseDashboard = useMemo(() => buildExerciseDashboard(logs), [logs])
   const splitCounts = useMemo(() => buildSplitCounts(logs), [logs])
   const cardioStats = useMemo(() => buildCardioDashboard(logs), [logs])
-  const coverage = useMemo(() => buildDataCoverage(logs), [logs])
   const heatmap = useMemo(() => buildConsistencyHeatmap(logs), [logs])
+  const coverage = useMemo(
+    () => buildDataCoverage(logs, heatmap.days.map((day) => day.date)),
+    [logs, heatmap],
+  )
   const nutritionTags = useMemo(() => buildNutritionTagDashboard(logs), [logs])
   const exerciseDeepDive = useMemo(() => buildExerciseDeepDive(logs), [logs])
   const [selectedExercise, setSelectedExercise] = useState('')
@@ -2068,19 +2071,19 @@ function TrendsView({
 
         <div className="coverage-grid">
           <article>
-            <span>Weight coverage</span>
+            <span>Weight coverage, 8w</span>
             <strong>{coverage.weightLogged}/{coverage.total}</strong>
           </article>
           <article>
-            <span>Waist coverage</span>
+            <span>Waist coverage, 8w</span>
             <strong>{coverage.waistLogged}/{coverage.total}</strong>
           </article>
           <article>
-            <span>Cardio coverage</span>
+            <span>Cardio coverage, 8w</span>
             <strong>{coverage.cardioLogged}/{coverage.total}</strong>
           </article>
           <article>
-            <span>Food coverage</span>
+            <span>Food coverage, 8w</span>
             <strong>{coverage.foodLogged}/{coverage.total}</strong>
           </article>
         </div>
@@ -2442,14 +2445,23 @@ function MiniSparkline({ points }: { points: string }) {
   )
 }
 
-function buildDataCoverage(logs: DailyLog[]) {
-  const total = logs.length
+function buildDataCoverage(logs: DailyLog[], dateWindow?: string[]) {
+  const scopedLogs = dateWindow
+    ? dateWindow
+        .map((date) => logs.find((log) => log.date === date))
+        .filter((log): log is DailyLog => Boolean(log))
+    : logs
+
+  const total = dateWindow?.length ?? logs.length
+
   return {
     total,
-    weightLogged: logs.filter((log) => safeNumber(log.weightKg) !== null).length,
-    waistLogged: logs.filter((log) => safeNumber(log.waistSizeCm) !== null).length,
-    cardioLogged: logs.filter((log) => safeNumber(log.treadmillDistanceKm) !== null || parseDurationToMinutes(log.treadmillMinutes) !== null).length,
-    foodLogged: logs.filter((log) => log.meals.some((meal) => meal.description.trim())).length,
+    weightLogged: scopedLogs.filter((log) => safeNumber(log.weightKg) !== null).length,
+    waistLogged: scopedLogs.filter((log) => safeNumber(log.waistSizeCm) !== null).length,
+    cardioLogged: scopedLogs.filter(
+      (log) => safeNumber(log.treadmillDistanceKm) !== null || parseDurationToMinutes(log.treadmillMinutes) !== null,
+    ).length,
+    foodLogged: scopedLogs.filter((log) => log.meals.some((meal) => meal.description.trim())).length,
   }
 }
 
