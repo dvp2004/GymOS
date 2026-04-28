@@ -86,6 +86,21 @@ type MealRow = {
   position: number
 }
 
+type ExerciseHistorySummary = {
+  lastLabel: string
+  bestLabel: string
+  lastPatch: Partial<ExerciseEntry>
+  sessions: number
+  lastScore: number | null
+  bestScore: number | null
+  bestDate: string | null
+}
+
+type ExercisePerformanceBadge = {
+  label: string
+  tone: 'pr' | 'up' | 'match' | 'down'
+}
+
 const STORAGE_KEY = 'gymos.logs.v1'
 
 const tabs: Array<{ id: Tab; label: string; icon: string }> = [
@@ -1507,7 +1522,7 @@ function WorkoutView({
                   type="button"
                   onClick={() => addFrequentExercise(exercise.displayName)}
                 >
-                  <strong>{exercise.displayName}</strong>
+                  <strong>{displayExerciseName(exercise.displayName)}</strong>
                   <span>{exercise.count}× · last {formatDateShort(exercise.latestDate)}</span>
                 </button>
               ))}
@@ -1544,16 +1559,26 @@ function WorkoutView({
             )}
 
             {visibleExercises.map((exercise) => {
-              const history = exerciseHistory.get(canonicalExerciseName(exercise.name))
+              const canonicalName = canonicalExerciseName(exercise.name)
+              const history = exerciseHistory.get(canonicalName)
+              const performanceBadge = getExercisePerformanceBadge(exercise, history)
+
               return (
               <article className="exercise-card" key={exercise.id}>
                 <div className="exercise-main">
-                  <input
-                    aria-label="Exercise name"
-                    className="exercise-name"
-                    value={exercise.name}
-                    onChange={(event) => updateExercise(exercise.id, { name: event.target.value })}
-                  />
+                  <div className="exercise-title-row">
+                    <input
+                      aria-label="Exercise name"
+                      className="exercise-name"
+                      value={exercise.name}
+                      onChange={(event) => updateExercise(exercise.id, { name: event.target.value })}
+                    />
+                    {performanceBadge && (
+                      <span className={`performance-badge ${performanceBadge.tone}`}>
+                        {performanceBadge.label}
+                      </span>
+                    )}
+                  </div>
                   <div className="mini-grid">
                     <input
                       aria-label="Weight"
@@ -2085,7 +2110,7 @@ function getFrequentExercises(logs: DailyLog[], limit = 12) {
       const existing = counts.get(canonical)
       if (!existing) {
         counts.set(canonical, {
-          displayName: exercise.name,
+          displayName: displayExerciseName(canonical),
           count: 1,
           latestDate: log.date,
           latestExercise: exercise,
@@ -2097,7 +2122,6 @@ function getFrequentExercises(logs: DailyLog[], limit = 12) {
 
       if (log.date > existing.latestDate) {
         existing.latestDate = log.date
-        existing.displayName = exercise.name
         existing.latestExercise = exercise
       }
     }
@@ -2213,28 +2237,43 @@ function buildDataCoverage(logs: DailyLog[]) {
 }
 
 function buildExerciseHistory(logs: DailyLog[], currentDate: string) {
-  const history = new Map<string, { lastLabel: string; bestLabel: string; lastPatch: Partial<ExerciseEntry> }>()
-  const byName = new Map<string, Array<{ date: string; exercise: ExerciseEntry; weight: number | null; volume: number | null }>>()
+  const history = new Map<string, ExerciseHistorySummary>()
+  const byName = new Map<
+    string,
+    Array<{
+      date: string
+      exercise: ExerciseEntry
+      score: number | null
+    }>
+  >()
 
   for (const log of [...logs].sort((a, b) => a.date.localeCompare(b.date))) {
     if (log.date >= currentDate) continue
+
     for (const exercise of log.exercises) {
       const name = canonicalExerciseName(exercise.name)
-      const weight = firstNumber(exercise.weight)
-      const sets = firstNumber(exercise.sets)
-      const reps = firstNumber(exercise.reps)
-      const volume = weight !== null && sets !== null && reps !== null ? weight * sets * reps : null
+      if (!name) continue
+
       const items = byName.get(name) ?? []
-      items.push({ date: log.date, exercise, weight, volume })
+      items.push({
+        date: log.date,
+        exercise,
+        score: getExerciseScore(exercise),
+      })
       byName.set(name, items)
     }
   }
 
   for (const [name, entries] of byName) {
     const last = entries[entries.length - 1]
-    const best = entries.reduce<typeof entries[number] | null>((winner, item) => {
+
+    const best = entries.reduce<(typeof entries)[number] | null>((winner, item) => {
       if (!winner) return item
-      if ((item.volume ?? item.weight ?? 0) > (winner.volume ?? winner.weight ?? 0)) return item
+
+      const itemScore = item.score ?? 0
+      const winnerScore = winner.score ?? 0
+
+      if (itemScore > winnerScore) return item
       return winner
     }, null)
 
@@ -2247,6 +2286,10 @@ function buildExerciseHistory(logs: DailyLog[], currentDate: string) {
         sets: last.exercise.sets,
         reps: last.exercise.reps,
       },
+      sessions: entries.length,
+      lastScore: last.score,
+      bestScore: best?.score ?? null,
+      bestDate: best?.date ?? null,
     })
   }
 
@@ -2273,43 +2316,141 @@ function buildConsistencyHeatmap(logs: DailyLog[]) {
   })
 }
 
-function titleCase(value: string) {
-  return value
-    .split(' ')
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+const EXERCISE_ALIASES: Array<{
+  canonical: string
+  display: string
+  patterns: RegExp[]
+}> = [
+  {
+    canonical: 'front-lat-pulldown',
+    display: 'Front lat-pulldown',
+    patterns: [/lat\s*-?\s*pulldown/i, /front\s+lat/i],
+  },
+  {
+    canonical: 'machine-chest-press',
+    display: 'Machine chest press',
+    patterns: [/chest\s+press/i],
+  },
+  {
+    canonical: 'machine-shoulder-press',
+    display: 'Machine shoulder press',
+    patterns: [/shoulder\s+press/i],
+  },
+  {
+    canonical: 'machine-triceps-pushdown',
+    display: 'Machine triceps pushdown',
+    patterns: [/triceps?\s+push\s*-?\s*down/i, /triceps?\s+pushdown/i],
+  },
+  {
+    canonical: 'triceps-extension',
+    display: 'Triceps extension',
+    patterns: [/triceps?\s+extension/i],
+  },
+  {
+    canonical: 'seated-row',
+    display: 'Seated row',
+    patterns: [/seated\s+row/i],
+  },
+  {
+    canonical: 'single-arm-row',
+    display: 'Single-arm row',
+    patterns: [/single\s+arm\s+row/i, /one\s+arm\s+row/i],
+  },
+  {
+    canonical: 'bicep-curl',
+    display: 'Bicep curl',
+    patterns: [/biceps?\s*-?\s*curl/i, /machine\s+biceps?\s*-?\s*curl/i],
+  },
+  {
+    canonical: 'hammer-curl',
+    display: 'Hammer curl',
+    patterns: [/hammer\s+curl/i],
+  },
+  {
+    canonical: 'dumbbell-lateral-raise',
+    display: 'Dumbbell lateral raise',
+    patterns: [/lateral\s+raise/i],
+  },
+  {
+    canonical: 'shoulder-shrug',
+    display: 'Shoulder shrug',
+    patterns: [/shoulder\s+shrug/i, /\bshrug\b/i],
+  },
+  {
+    canonical: 'leg-curl',
+    display: 'Leg curl',
+    patterns: [/leg\s+curl/i],
+  },
+  {
+    canonical: 'leg-extension',
+    display: 'Leg extension',
+    patterns: [/leg\s+extension/i],
+  },
+  {
+    canonical: 'standing-calf-raise',
+    display: 'Standing calf raise',
+    patterns: [/calf\s*-?\s*raise/i, /standing\s+calf/i],
+  },
+  {
+    canonical: 'dumbbell-romanian-deadlift',
+    display: 'Dumbbell Romanian deadlift',
+    patterns: [/romanian\s+deadlift/i, /\brdl\b/i],
+  },
+  {
+    canonical: 'reverse-lunge',
+    display: 'Reverse lunge',
+    patterns: [/reverse\s+lunge/i],
+  },
+  {
+    canonical: 'squat',
+    display: 'Squat',
+    patterns: [/\bsquat/i],
+  },
+  {
+    canonical: 'plank',
+    display: 'Plank',
+    patterns: [/\bplank\b/i],
+  },
+]
+
+function cleanExerciseName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\bmachine\b/g, ' ')
+    .replace(/\bdumbbell\b/g, ' dumbbell ')
+    .replace(/[-_/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function canonicalExerciseName(name: string) {
-  const cleaned = name
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, '')
-    .replace(/^machine\s+/g, '')
-    .replace(/[-_/]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  const cleaned = cleanExerciseName(name)
 
-  if (cleaned.includes('lat pulldown') || cleaned.includes('lat pull down')) return 'Lat pulldown'
-  if (cleaned.includes('chest press')) return 'Chest press'
-  if (cleaned.includes('seated row')) return 'Seated row'
-  if (cleaned.includes('single arm row')) return 'Single-arm row'
-  if (cleaned.includes('bicep')) return 'Bicep curl'
-  if (cleaned.includes('hammer')) return 'Hammer curl'
-  if (cleaned.includes('lateral raise')) return 'Lateral raise'
-  if (cleaned.includes('triceps pushdown')) return 'Triceps pushdown'
-  if (cleaned.includes('triceps extension')) return 'Triceps extension'
-  if (cleaned.includes('shoulder press')) return 'Shoulder press'
-  if (cleaned.includes('shoulder shrug')) return 'Shoulder shrug'
-  if (cleaned.includes('leg curl')) return 'Leg curl'
-  if (cleaned.includes('leg extension')) return 'Leg extension'
-  if (cleaned.includes('romanian deadlift')) return 'Romanian deadlift'
-  if (cleaned.includes('reverse lunge')) return 'Reverse lunge'
-  if (cleaned.includes('calf')) return 'Calf raise'
-  if (cleaned.includes('squat')) return 'Squat'
-  if (cleaned.includes('plank')) return 'Plank'
+  for (const alias of EXERCISE_ALIASES) {
+    if (alias.patterns.some((pattern) => pattern.test(cleaned))) {
+      return alias.canonical
+    }
+  }
 
-  return titleCase(cleaned || 'Unnamed exercise')
+  return cleaned
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function displayExerciseName(nameOrCanonical: string) {
+  const canonical =
+    EXERCISE_ALIASES.some((item) => item.canonical === nameOrCanonical)
+      ? nameOrCanonical
+      : canonicalExerciseName(nameOrCanonical)
+
+  const alias = EXERCISE_ALIASES.find((item) => item.canonical === canonical)
+
+  if (alias) return alias.display
+
+  return nameOrCanonical
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
 function firstNumber(value: string | number | null | undefined) {
@@ -2334,6 +2475,48 @@ function formatExerciseEntry(exercise: ExerciseEntry) {
   const load = formatLoad(weight, exercise.unit)
   const scheme = sets && reps ? `${sets}×${reps}` : sets ? `${sets} sets` : reps ? `${reps} reps` : 'logged'
   return `${load}, ${scheme}`
+}
+
+function getExerciseScore(exercise: ExerciseEntry) {
+  const weight = firstNumber(exercise.weight)
+  const sets = firstNumber(exercise.sets)
+  const reps = firstNumber(exercise.reps)
+
+  if (weight !== null && sets !== null && reps !== null) {
+    return weight * sets * reps
+  }
+
+  if (weight !== null) return weight
+
+  return null
+}
+
+function getExercisePerformanceBadge(
+  exercise: ExerciseEntry,
+  history: ExerciseHistorySummary | undefined,
+): ExercisePerformanceBadge | null {
+  if (!history) return null
+
+  const currentScore = getExerciseScore(exercise)
+  if (currentScore === null) return null
+
+  if (history.bestScore !== null && currentScore > history.bestScore) {
+    return { label: 'New PR', tone: 'pr' }
+  }
+
+  if (history.bestScore !== null && currentScore === history.bestScore) {
+    return { label: 'Matches best', tone: 'match' }
+  }
+
+  if (history.lastScore !== null && currentScore > history.lastScore) {
+    return { label: 'Up vs last', tone: 'up' }
+  }
+
+  if (history.lastScore !== null && currentScore < history.lastScore) {
+    return { label: 'Below last', tone: 'down' }
+  }
+
+  return null
 }
 
 function buildExerciseDashboard(logs: DailyLog[]) {

@@ -1526,3 +1526,64 @@ label {
     min-width: 10.5rem;
   }
 }
+
+.exercise-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.exercise-title-row .exercise-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.performance-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.85rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.performance-badge.pr {
+  color: #06130d;
+  background: linear-gradient(135deg, #7cffb2, #28e17d);
+  box-shadow:
+    0 0 22px rgba(65, 255, 150, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.performance-badge.up {
+  color: #dfffee;
+  background: rgba(46, 220, 132, 0.16);
+}
+
+.performance-badge.match {
+  color: #e8e2ff;
+  background: rgba(152, 120, 255, 0.18);
+}
+
+.performance-badge.down {
+  color: #ffd8d8;
+  background: rgba(255, 86, 86, 0.15);
+}
+
+@media (max-width: 720px) {
+  .exercise-title-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .performance-badge {
+    width: fit-content;
+  }
+}
