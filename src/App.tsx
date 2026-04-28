@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ChangeEvent, FormEvent } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
@@ -243,6 +243,49 @@ function isUnavailableValue(value: unknown) {
   )
 }
 
+function formatElapsedTime(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatClockTime(date: Date) {
+  return date.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+}
+
+function getWorkoutCompletion(exercises: ExerciseEntry[]) {
+  const totalSets = exercises.reduce((sum, exercise) => sum + (safeNumber(exercise.sets) ?? 0), 0)
+  const completedSets = exercises.reduce((sum, exercise) => sum + Math.max(exercise.completedSets || 0, 0), 0)
+
+  if (!totalSets) {
+    return {
+      totalSets: 0,
+      completedSets: 0,
+      percentage: 0,
+      label: 'No sets planned',
+    }
+  }
+
+  const percentage = Math.min(100, Math.round((completedSets / totalSets) * 100))
+
+  return {
+    totalSets,
+    completedSets,
+    percentage,
+    label: `${completedSets}/${totalSets} sets`,
+  }
+}
+
 function safeNumber(value: string | number | null | undefined) {
   if (isUnavailableValue(value)) return null
 
@@ -384,10 +427,10 @@ function isMissingMealTagsColumnError(error: unknown) {
   const message = getErrorMessage(error).toLowerCase()
 
   return (
-    message.includes('meal_entries') && message.includes('tags')
-  ) || (
-    message.includes("column \"tags\"") ||
-    message.includes("could not find the 'tags' column")
+    message.includes('meal_entries') &&
+    (message.includes('tags') ||
+      message.includes('column "tags"') ||
+      message.includes("could not find the 'tags' column"))
   )
 }
 
@@ -1500,16 +1543,32 @@ function WorkoutView({
   removeExercise: (id: string) => void
 }) {
   const [selectedWorkoutType, setSelectedWorkoutType] = useState<WorkoutType>(draft.workoutType)
+  const [isWorkoutActive, setIsWorkoutActive] = useState(false)
+  const [isWorkoutPaused, setIsWorkoutPaused] = useState(false)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const [startedAt, setStartedAt] = useState<Date | null>(null)
+  const workoutStartRef = useRef<Date | null>(null)
 
   useEffect(() => {
     setSelectedWorkoutType(draft.workoutType)
   }, [draft.date, draft.workoutType])
+
+  useEffect(() => {
+    if (!isWorkoutActive || isWorkoutPaused) return
+
+    const interval = window.setInterval(() => {
+      setElapsedSeconds((current) => current + 1)
+    }, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [isWorkoutActive, isWorkoutPaused])
 
   const isViewingSavedType = selectedWorkoutType === draft.workoutType
   const visibleExercises = isViewingSavedType ? draft.exercises : []
   const exerciseHistory = useMemo(() => buildExerciseHistory(logs, draft.date), [logs, draft.date])
   const frequentExercises = useMemo(() => getFrequentExercises(logs), [logs])
   const previousWorkout = useMemo(() => getLastWorkout(logs, draft.date), [logs, draft.date])
+  const completion = useMemo(() => getWorkoutCompletion(draft.exercises), [draft.exercises])
 
   function addFrequentExercise(name: string) {
     const canonical = canonicalExerciseName(name)
@@ -1520,6 +1579,36 @@ function WorkoutView({
       : makeExercise(name)
 
     updateDraft('exercises', [...draft.exercises, nextExercise])
+  }
+
+  function startWorkoutMode() {
+    const now = new Date()
+
+    workoutStartRef.current = now
+    setStartedAt(now)
+    setElapsedSeconds(0)
+    setIsWorkoutPaused(false)
+    setIsWorkoutActive(true)
+
+    if (!draft.gymTime) {
+      updateDraft('gymTime', `${formatClockTime(now)}-`)
+    }
+  }
+
+  function pauseWorkoutMode() {
+    setIsWorkoutPaused((current) => !current)
+  }
+
+  function finishWorkoutMode() {
+    const end = new Date()
+    const start = workoutStartRef.current ?? startedAt
+
+    if (start) {
+      updateDraft('gymTime', `${formatClockTime(start)}-${formatClockTime(end)}`)
+    }
+
+    setIsWorkoutActive(false)
+    setIsWorkoutPaused(false)
   }
 
   function copyPreviousWorkout() {
@@ -1554,6 +1643,41 @@ function WorkoutView({
 
   return (
     <div className="view-grid">
+      <section className={`active-workout-panel span-2 ${isWorkoutActive ? 'live' : ''}`}>
+        <div>
+          <p className="eyebrow">{isWorkoutActive ? 'Workout live' : 'Ready to train'}</p>
+          <h3>{isWorkoutActive ? formatElapsedTime(elapsedSeconds) : `${draft.workoutType} session`}</h3>
+          <p>
+            {isWorkoutActive
+              ? `${completion.label} completed · ${completion.percentage}% done`
+              : 'Start workout mode to track time, sets and session progress while you train.'}
+          </p>
+        </div>
+
+        <div className="workout-progress-block">
+          <div className="workout-progress-ring" style={{ ['--progress' as string]: `${completion.percentage}%` }}>
+            <strong>{completion.percentage}%</strong>
+            <span>sets</span>
+          </div>
+
+          <div className="active-workout-actions">
+            {!isWorkoutActive ? (
+              <button className="primary-button" type="button" onClick={startWorkoutMode}>
+                Start workout
+              </button>
+            ) : (
+              <>
+                <button className="ghost-button" type="button" onClick={pauseWorkoutMode}>
+                  {isWorkoutPaused ? 'Resume' : 'Pause'}
+                </button>
+                <button className="primary-button" type="button" onClick={finishWorkoutMode}>
+                  Finish
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
       <section className="panel span-2">
         <div className="section-heading">
           <div>
@@ -1713,9 +1837,15 @@ function WorkoutView({
                       key={index}
                       type="button"
                       className={index < exercise.completedSets ? 'done' : ''}
-                      onClick={() => updateExercise(exercise.id, { completedSets: index + 1 === exercise.completedSets ? index : index + 1 })}
+                      onClick={() =>
+                        updateExercise(exercise.id, {
+                          completedSets: index + 1 === exercise.completedSets ? index : index + 1,
+                        })
+                      }
                       aria-label={`Mark set ${index + 1}`}
-                    />
+                    >
+                      {index + 1}
+                    </button>
                   ))}
                 </div>
 
