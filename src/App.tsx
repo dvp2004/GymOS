@@ -683,6 +683,30 @@ function normaliseImportedLog(item: unknown): DailyLog {
   }
 }
 
+function MobileTabBar({
+  activeTab,
+  setActiveTab,
+}: {
+  activeTab: Tab
+  setActiveTab: (tab: Tab) => void
+}) {
+  return (
+    <nav className="mobile-tabs mobile-tabs-fixed" aria-label="Mobile navigation">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          className={activeTab === tab.id ? 'active' : ''}
+          type="button"
+          onClick={() => setActiveTab(tab.id)}
+        >
+          <span>{tab.icon}</span>
+          {tab.label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('today')
   const [logs, setLogs] = useState<DailyLog[]>(loadLogs)
@@ -1004,21 +1028,6 @@ function App() {
             </button>
           </div>
         </header>
-
-        <section className="mobile-tabs" aria-label="Mobile navigation">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              className={activeTab === tab.id ? 'active' : ''}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <span>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </section>
-
         {activeTab === 'today' && (
           <TodayView draft={draft} logs={logs} stats={stats} updateDraft={updateDraft} setActiveTab={setActiveTab} />
         )}
@@ -1066,6 +1075,8 @@ function App() {
           />
         )}
       </section>
+
+      <MobileTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
     </main>
   )
 }
