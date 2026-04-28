@@ -195,6 +195,33 @@ const UPPER_EXERCISE_CANONICALS = new Set([
   'shoulder-shrug',
 ])
 
+const GYM_QUOTES = [
+  'Progress is rented. Rent is due daily.',
+  'The boring reps are the ones that change you.',
+  'Do the work. Let the trend prove it.',
+  'Strong is built quietly, then noticed suddenly.',
+  'One clean session beats ten perfect plans.',
+  'You do not need motivation. You need a logged rep.',
+  'Consistency is the compound interest of training.',
+]
+
+function getDailyGymQuote(date: string) {
+  const total = date.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)
+  return GYM_QUOTES[total % GYM_QUOTES.length]
+}
+
+function MotivationCard({ date }: { date: string }) {
+  return (
+    <section className="motivation-card span-2">
+      <div>
+        <p className="eyebrow">Training mindset</p>
+        <h3>{getDailyGymQuote(date)}</h3>
+      </div>
+      <span>GymOS</span>
+    </section>
+  )
+}
+
 function makeId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID()
@@ -1863,7 +1890,7 @@ function TodayView({
           <span>/7 recent</span>
         </div>
       </section>
-
+      <MotivationCard date={draft.date} />
       <section className="panel quick-log-panel">
         <div className="section-heading compact">
           <div>
@@ -2106,8 +2133,8 @@ function WorkoutView({
       <section className="panel span-2 raw-workout-panel">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Workout input</p>
-            <h3>Paste today’s workout</h3>
+            <p className="eyebrow">Post-session import</p>
+            <h3>Paste the work. Keep the proof.</h3>
           </div>
           <button className="primary-button" type="button" onClick={applyParsedWorkoutText}>
             Apply to {formatDateShort(draft.date)}
