@@ -673,6 +673,33 @@ function emptyToNull(value: string | null | undefined) {
   return String(value).trim()
 }
 
+function isCardioLine(line: string) {
+  const lower = line.toLowerCase()
+
+  if (/^(treadmill|stairmaster|stairs|stair master|cycling|cycle|bike|biking)\s*:/i.test(line)) {
+    return true
+  }
+
+  if (/^b\.\s*/i.test(line) && (lower.includes('km') || lower.includes('incline'))) {
+    return true
+  }
+
+  return (
+    (lower.includes('km') || lower.includes('min') || /\d{1,2}:\d{2}/.test(lower)) &&
+    (lower.includes('incline') ||
+      lower.includes('level') ||
+      lower.includes('resistance') ||
+      lower.includes('stair') ||
+      lower.includes('cycle') ||
+      lower.includes('bike') ||
+      lower.includes('treadmill'))
+  )
+}
+
+function isPureCardioHeading(line: string) {
+  return /^(treadmill|stairmaster|stairs|stair master|cycling|cycle|bike|biking)\s*:\s*$/i.test(line.trim())
+}
+
 function parseDurationToMinutes(value: string | number | null | undefined) {
   if (isUnavailableValue(value)) return null
 
@@ -702,19 +729,28 @@ function parseWorkoutWeightLine(line: string) {
   return value
 }
 
-function parseTreadmillLine(line: string) {
-  const distanceMatch = line.match(/([-\d.]+)\s*km/i)
-  const durationMatch = line.match(/,\s*([-\d:]+)\s*,/i)
-  const inclineMatch = line.match(/incline\s*=\s*([-\d.]+)/i)
+function parseCardioLine(line: string) {
+  const cleaned = line
+    .replace(/^(treadmill|stairmaster|stairs|stair master|cycling|cycle|bike|biking)\s*:\s*/i, '')
+    .replace(/^b\.\s*/i, '')
+    .trim()
+
+  const distanceMatch = cleaned.match(/([-\d.]+)\s*km/i)
+  const durationMatch =
+    cleaned.match(/(?:^|[,| ])\s*([0-9]{1,2}:[0-9]{2})\s*(?:[,| ]|$)/i) ??
+    cleaned.match(/([-\d.]+)\s*(?:min|mins|minutes)\b/i)
+  const inclineMatch = cleaned.match(/incline\s*=?\s*([-\d.]+)/i)
+  const levelMatch = cleaned.match(/(?:level|lvl|resistance)\s*=?\s*([-\d.]+)/i)
 
   const distance = distanceMatch?.[1]?.trim()
   const duration = durationMatch?.[1]?.trim()
   const incline = inclineMatch?.[1]?.trim()
+  const level = levelMatch?.[1]?.trim()
 
   return {
     treadmillDistanceKm: distance && distance !== '-' ? distance : '',
     treadmillMinutes: duration && duration !== '-' && duration !== '-:00' ? duration : '',
-    treadmillIncline: incline && incline !== '-' ? incline : '',
+    treadmillIncline: incline && incline !== '-' ? incline : level && level !== '-' ? `level ${level}` : '',
   }
 }
 
@@ -800,23 +836,35 @@ function parseRawWorkoutText(raw: string): ParsedWorkoutText {
       continue
     }
 
-    if (/^treadmill\s*:/i.test(line)) {
+    if (isPureCardioHeading(line)) {
       continue
     }
 
-    if (/km/i.test(line) && /incline/i.test(line)) {
-      const treadmill = parseTreadmillLine(line)
-      treadmillDistanceKm = treadmill.treadmillDistanceKm
-      treadmillMinutes = treadmill.treadmillMinutes
-      treadmillIncline = treadmill.treadmillIncline
+    if (isCardioLine(line)) {
+      const cardio = parseCardioLine(line)
+
+      treadmillDistanceKm = cardio.treadmillDistanceKm
+      treadmillMinutes = cardio.treadmillMinutes
+      treadmillIncline = cardio.treadmillIncline
 
       if (treadmillDistanceKm && !treadmillMinutes) {
         warnings.push(
           makeParserWarning(
             'warning',
-            'Treadmill distance was found but duration is missing.',
+            'Cardio distance was found but duration is missing.',
             line,
             'Add duration if you want cardio pace/progression to be useful.',
+          ),
+        )
+      }
+
+      if (!treadmillDistanceKm && !treadmillMinutes) {
+        warnings.push(
+          makeParserWarning(
+            'warning',
+            'Cardio line was detected but distance/duration could not be parsed.',
+            line,
+            'Use something like Treadmill: 0.42km, 05:00, incline=6.0 or Stairmaster: 10:00, level=5.',
           ),
         )
       }

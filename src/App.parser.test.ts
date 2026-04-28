@@ -112,4 +112,38 @@ Machine Seated Row: 65lbs, 3, 12`)
     expect(canonicalExerciseName('Standing calf Raise')).toBe('standing-calf-raise')
     expect(displayExerciseName('machine-chest-press')).toBe('Machine chest press')
   })
+
+  it('parses inline treadmill format', () => {
+    const parsed = parseRawWorkoutText(`Weight: 92 kgs
+  Treadmill: 0.42km, 05:00, incline=6.0
+  Squats: 0lbs, 3, 12`)
+
+    expect(parsed.workoutType).toBe('Lower')
+    expect(parsed.weightKg).toBe('92')
+    expect(parsed.treadmillDistanceKm).toBe('0.42')
+    expect(parsed.treadmillMinutes).toBe('05:00')
+    expect(parsed.treadmillIncline).toBe('6.0')
+    expect(parsed.exercises).toHaveLength(1)
+  })
+
+  it('parses Stairmaster as cardio', () => {
+    const parsed = parseRawWorkoutText(`Weight: 92 kgs
+  Stairmaster: 10:00, level=5`)
+
+    expect(parsed.workoutType).toBe('Cardio')
+    expect(parsed.treadmillDistanceKm).toBe('')
+    expect(parsed.treadmillMinutes).toBe('10:00')
+    expect(parsed.treadmillIncline).toBe('level 5')
+  })
+
+  it('parses cycling as cardio', () => {
+    const parsed = parseRawWorkoutText(`Weight: 92 kgs
+  Cycling: 2.5km, 12:00, resistance=4`)
+
+    expect(parsed.workoutType).toBe('Cardio')
+    expect(parsed.treadmillDistanceKm).toBe('2.5')
+    expect(parsed.treadmillMinutes).toBe('12:00')
+    expect(parsed.treadmillIncline).toBe('level 4')
+  })
 })
+
