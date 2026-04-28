@@ -1700,3 +1700,95 @@ label {
     font-size: 0.62rem;
   }
 }
+
+.trend-toggle-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.trend-chart-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.trend-chart-summary strong {
+  color: var(--text-strong);
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  letter-spacing: -0.07em;
+}
+
+.trend-chart-summary span {
+  color: var(--text-muted);
+  font-weight: 800;
+}
+
+.trend-chart-wrap {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.trend-chart {
+  width: 100%;
+  min-height: 220px;
+  border-radius: 24px;
+  padding: 0.5rem;
+  background:
+    radial-gradient(circle at top right, rgba(217, 255, 66, 0.08), transparent 18rem),
+    rgba(0, 0, 0, 0.18);
+}
+
+.trend-chart line {
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 2;
+}
+
+.trend-chart polyline {
+  stroke: var(--acid);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 12px rgba(217, 255, 66, 0.24));
+}
+
+.trend-chart circle {
+  r: 5;
+  fill: var(--acid);
+  stroke: rgba(5, 6, 7, 0.9);
+  stroke-width: 3;
+}
+
+.trend-chart-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.trend-chart-caption strong {
+  color: var(--text-soft);
+}
+
+.coach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .coach-actions {
+    width: 100%;
+  }
+
+  .coach-actions .ghost-button,
+  .coach-actions .primary-button {
+    flex: 1;
+  }
+}

@@ -5,6 +5,8 @@ import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from './lib/supabase'
 import './App.css'
 
+const EXISTING_CHATGPT_COACH_URL = import.meta.env.VITE_EXISTING_CHATGPT_COACH_URL ?? ''
+
 type Tab = 'today' | 'workout' | 'nutrition' | 'trends' | 'coach'
 type WorkoutType = 'Upper' | 'Lower' | 'Cardio' | 'Recovery' | 'Rest' | 'Custom'
 type SyncState = 'local' | 'checking' | 'syncing' | 'synced' | 'error'
@@ -124,6 +126,15 @@ type ParsedWorkoutText = {
   exercises: ExerciseEntry[]
 }
 
+type TrendMetric = 'weight' | 'waist' | 'cardio-distance' | 'cardio-minutes'
+
+const TREND_METRICS: Array<{ id: TrendMetric; label: string }> = [
+  { id: 'weight', label: 'Weight' },
+  { id: 'waist', label: 'Waist' },
+  { id: 'cardio-distance', label: 'Cardio km' },
+  { id: 'cardio-minutes', label: 'Cardio min' },
+]
+
 const STORAGE_KEY = 'gymos.logs.v1'
 
 const tabs: Array<{ id: Tab; label: string; icon: string }> = [
@@ -164,6 +175,99 @@ function makeMeal(label: MealEntry['label'], description = ''): MealEntry {
     proteinScore: 1,
     tags: [],
   }
+}
+
+function buildTrendSeries(logs: DailyLog[], metric: TrendMetric) {
+  return [...logs]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((log) => {
+      let value: number | null = null
+
+      if (metric === 'weight') value = safeNumber(log.weightKg)
+      if (metric === 'waist') value = safeNumber(log.waistSizeCm)
+      if (metric === 'cardio-distance') value = safeNumber(log.treadmillDistanceKm)
+      if (metric === 'cardio-minutes') value = parseDurationToMinutes(log.treadmillMinutes)
+
+      return { date: log.date, value }
+    })
+    .filter((entry): entry is { date: string; value: number } => entry.value !== null)
+}
+
+function getTrendSummary(series: Array<{ date: string; value: number }>) {
+  if (series.length < 2) {
+    return {
+      latest: series[0]?.value ?? null,
+      delta: null,
+      label: 'Need more data',
+    }
+  }
+
+  const first = series[0]
+  const latest = series[series.length - 1]
+  const delta = latest.value - first.value
+
+  return {
+    latest: latest.value,
+    delta,
+    label: `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} since ${formatDateShort(first.date)}`,
+  }
+}
+
+function TrendLineChart({
+  series,
+  suffix,
+}: {
+  series: Array<{ date: string; value: number }>
+  suffix: string
+}) {
+  if (series.length < 2) {
+    return <div className="empty-state">Need at least 2 logged values for this chart.</div>
+  }
+
+  const width = 720
+  const height = 260
+  const padding = 34
+  const values = series.map((entry) => entry.value)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+
+  const points = series.map((entry, index) => {
+    const x = padding + (index / Math.max(series.length - 1, 1)) * (width - padding * 2)
+    const y = height - padding - ((entry.value - min) / range) * (height - padding * 2)
+
+    return {
+      ...entry,
+      x,
+      y,
+    }
+  })
+
+  const path = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ')
+  const latest = points[points.length - 1]
+
+  return (
+    <div className="trend-chart-wrap">
+      <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Trend chart">
+        <line x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
+        <line x1={padding} x2={padding} y1={padding} y2={height - padding} />
+        <polyline points={path} fill="none" />
+        {points.map((point) => (
+          <circle key={`${point.date}-${point.value}`} cx={point.x} cy={point.y}>
+            <title>{`${formatDateShort(point.date)} · ${point.value.toFixed(1)}${suffix}`}</title>
+          </circle>
+        ))}
+      </svg>
+      <div className="trend-chart-caption">
+        <span>{formatDateShort(series[0].date)}</span>
+        <strong>
+          Latest {latest.value.toFixed(1)}
+          {suffix}
+        </strong>
+        <span>{formatDateShort(latest.date)}</span>
+      </div>
+    </div>
+  )
 }
 
 function toInputDate(date: Date) {
@@ -1076,6 +1180,15 @@ function App() {
     )
   }
 
+  function openExistingCoachChat() {
+    if (!EXISTING_CHATGPT_COACH_URL) {
+      window.alert('Existing ChatGPT coach URL is not configured.')
+      return
+    }
+
+    window.open(EXISTING_CHATGPT_COACH_URL, '_blank', 'noopener,noreferrer')
+  }
+
   async function copyCoachPrompt() {
     await navigator.clipboard.writeText(coachPrompt)
     setCopyState('copied')
@@ -1198,6 +1311,7 @@ function App() {
             copyCoachPrompt={copyCoachPrompt}
             copyState={copyState}
             setCoachQuestion={setCoachQuestion}
+            openExistingCoachChat={openExistingCoachChat}
           />
         )}
       </section>
@@ -1663,8 +1777,7 @@ function WorkoutView({
         </div>
 
         <p className="helper-copy">
-          Paste the exact format you already use. GymOS will extract weight, treadmill data, exercises, sets,
-          reps, normalise exercise names, and infer whether it was Upper, Lower, Cardio, or Custom.
+          Paste your raw gym note exactly as you write it. GymOS will turn it into structured data for this date: weight, treadmill, exercises, sets, reps, and clean exercise names. You only review the parsed result and save.
         </p>
 
         <textarea
@@ -1968,6 +2081,17 @@ function TrendsView({
   const exerciseDeepDive = useMemo(() => buildExerciseDeepDive(logs), [logs])
   const [selectedExercise, setSelectedExercise] = useState('')
   const selectedExerciseInsight = exerciseDeepDive.find((exercise) => exercise.canonicalName === selectedExercise) ?? exerciseDeepDive[0] ?? null
+  const [selectedTrendMetric, setSelectedTrendMetric] = useState<TrendMetric>('weight')
+  const trendSeries = useMemo(() => buildTrendSeries(logs, selectedTrendMetric), [logs, selectedTrendMetric])
+  const trendSummary = useMemo(() => getTrendSummary(trendSeries), [trendSeries])
+  const trendSuffix =
+    selectedTrendMetric === 'weight'
+      ? ' kg'
+      : selectedTrendMetric === 'waist'
+        ? ' cm'
+        : selectedTrendMetric === 'cardio-distance'
+          ? ' km'
+          : ' min'
 
   async function handleImport() {
     try {
@@ -2028,6 +2152,38 @@ function TrendsView({
             <strong>{stats.cardioMinutesLast7} min</strong>
           </div>
         </div>
+      </section>
+
+      <section className="panel span-2">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Interactive trend</p>
+            <h3>Body and cardio graph</h3>
+          </div>
+          <span className="status-pill">{trendSeries.length} points</span>
+        </div>
+
+        <div className="trend-toggle-row">
+          {TREND_METRICS.map((metric) => (
+            <button
+              key={metric.id}
+              className={selectedTrendMetric === metric.id ? 'chip active' : 'chip'}
+              type="button"
+              onClick={() => setSelectedTrendMetric(metric.id)}
+            >
+              {metric.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="trend-chart-summary">
+          <strong>
+            {trendSummary.latest === null ? '—' : `${trendSummary.latest.toFixed(1)}${trendSuffix}`}
+          </strong>
+          <span>{trendSummary.label}</span>
+        </div>
+
+        <TrendLineChart series={trendSeries} suffix={trendSuffix} />
       </section>
 
       <section className="panel span-2">
@@ -2285,6 +2441,7 @@ function CoachView({
   copyCoachPrompt,
   copyState,
   setCoachQuestion,
+  openExistingCoachChat,
 }: {
   coachInsight: string[]
   coachPrompt: string
@@ -2292,18 +2449,24 @@ function CoachView({
   copyCoachPrompt: () => Promise<void>
   copyState: 'idle' | 'copied'
   setCoachQuestion: (question: string) => void
+  openExistingCoachChat: () => void
 }) {
   return (
     <div className="view-grid">
       <section className="panel span-2 coach-panel">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">AI layer placeholder</p>
-            <h3>Coach prompt builder</h3>
+            <p className="eyebrow">End-of-day coach handoff</p>
+            <h3>Send today’s full log to ChatGPT</h3>
           </div>
-          <button className="primary-button" type="button" onClick={copyCoachPrompt}>
-            {copyState === 'copied' ? 'Copied' : 'Copy prompt'}
-          </button>
+          <div className="coach-actions">
+            <button className="ghost-button" type="button" onClick={openExistingCoachChat}>
+              Open existing ChatGPT coach
+            </button>
+            <button className="primary-button" type="button" onClick={copyCoachPrompt}>
+              {copyState === 'copied' ? 'Copied' : 'Copy end-of-day report'}
+            </button>
+          </div>
         </div>
 
         <label>
@@ -2321,7 +2484,7 @@ function CoachView({
         </div>
 
         <label>
-          Prompt that will later go to the backend AI function
+          End-of-day report to paste into your existing ChatGPT gym chat
           <textarea className="prompt-box" readOnly value={coachPrompt} />
         </label>
       </section>
