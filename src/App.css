@@ -668,12 +668,6 @@ label {
   line-height: 1.35;
 }
 
-.template-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
 .chip {
   min-height: 44px;
   padding: 0 17px;
@@ -751,26 +745,6 @@ label {
   color: var(--text-soft);
   font-size: 0.82rem;
   font-weight: 800;
-}
-
-.set-dots {
-  display: flex;
-  gap: 9px;
-  align-items: center;
-}
-
-.set-dots button {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  border: 1px solid var(--line-2);
-  background: rgba(255, 255, 255, 0.045);
-}
-
-.set-dots button.done {
-  border-color: var(--acid);
-  background: var(--acid);
-  box-shadow: 0 0 0 6px rgba(217, 255, 66, 0.08);
 }
 
 .meal-card {
@@ -1315,10 +1289,6 @@ label {
     grid-template-columns: 1fr;
   }
 
-  .set-dots {
-    flex-wrap: wrap;
-  }
-
   .heatmap-grid {
     grid-template-columns: repeat(14, 1fr);
     gap: 5px;
@@ -1403,85 +1373,6 @@ label {
   }
 }
 
-.workout-header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  justify-content: flex-end;
-}
-
-.frequent-exercise-panel {
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 1.35rem;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
-    rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.frequent-exercise-panel h4 {
-  margin: 0.1rem 0 0.9rem;
-  font-size: 1rem;
-  color: var(--text-strong, #f7f7fb);
-}
-
-.frequent-exercise-row {
-  display: flex;
-  gap: 0.7rem;
-  overflow-x: auto;
-  padding-bottom: 0.35rem;
-  scroll-snap-type: x proximity;
-}
-
-.frequent-exercise-row::-webkit-scrollbar {
-  height: 0.35rem;
-}
-
-.frequent-exercise-row::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.frequent-exercise-chip {
-  min-width: 12rem;
-  min-height: 4.25rem;
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.85rem 1rem;
-  border: 0;
-  border-radius: 1.1rem;
-  color: var(--text-strong, #f7f7fb);
-  background:
-    radial-gradient(circle at top left, rgba(80, 255, 170, 0.16), transparent 42%),
-    rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-  cursor: pointer;
-  text-align: left;
-}
-
-.frequent-exercise-chip strong {
-  font-size: 0.9rem;
-  line-height: 1.2;
-}
-
-.frequent-exercise-chip span {
-  font-size: 0.75rem;
-  color: var(--text-muted, rgba(255, 255, 255, 0.62));
-}
-
-.frequent-exercise-chip:hover {
-  transform: translateY(-1px);
-  background:
-    radial-gradient(circle at top left, rgba(80, 255, 170, 0.22), transparent 42%),
-    rgba(255, 255, 255, 0.1);
-}
-
 @media (max-width: 720px) {
   .workout-header-actions {
     width: 100%;
@@ -1490,15 +1381,6 @@ label {
 
   .workout-header-actions .ghost-button {
     flex: 1;
-  }
-
-  .frequent-exercise-panel {
-    margin-inline: -0.2rem;
-    padding: 0.85rem;
-  }
-
-  .frequent-exercise-chip {
-    min-width: 10.5rem;
   }
 }
 

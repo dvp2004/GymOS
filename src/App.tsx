@@ -148,50 +148,12 @@ const MEAL_TAGS: Array<{ id: MealTag; label: string }> = [
 
 const MEAL_TAG_IDS = new Set<MealTag>(MEAL_TAGS.map((tag) => tag.id))
 
-const workoutTemplates: Record<Exclude<WorkoutType, 'Custom' | 'Rest' | 'Recovery' | 'Cardio'>, ExerciseEntry[]> = {
-  Upper: [
-    makeExercise('Front lat-pulldown', '65', 'lbs', '3', '12'),
-    makeExercise('Machine chest press', '40', 'lbs', '3', '12'),
-    makeExercise('Seated row', '65', 'lbs', '3', '12'),
-    makeExercise('Bicep curl', '15', 'lbs', '3', '12'),
-    makeExercise('Hammer curl', '15', 'lbs', '3', '15'),
-    makeExercise('Dumbbell lateral raise', '10', 'lbs', '3', '12'),
-    makeExercise('Single-arm row', '15', 'lbs', '3', '12'),
-  ],
-  Lower: [
-    makeExercise('Leg curl', '', 'lbs', '3', '15'),
-    makeExercise('Leg extension', '', 'lbs', '3', '15'),
-    makeExercise('Dumbbell Romanian deadlift', '', 'lbs', '3', '12'),
-    makeExercise('Supported squat', '', 'bodyweight', '3', '10'),
-    makeExercise('Calf raises', '', 'bodyweight', '3', '18'),
-    makeExercise('Plank', '', 'bodyweight', '3', '45 sec'),
-  ],
-}
-
 function makeId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID()
   }
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
-function makeExercise(
-  name = '',
-  weight = '',
-  unit: ExerciseEntry['unit'] = 'lbs',
-  sets = '3',
-  reps = '12',
-): ExerciseEntry {
-  return {
-    id: makeId(),
-    name,
-    weight,
-    unit,
-    sets,
-    reps,
-    completedSets: 0,
-  }
 }
 
 function makeMeal(label: MealEntry['label'], description = ''): MealEntry {
@@ -1085,19 +1047,6 @@ function App() {
     setSyncState('local')
   }
 
-  function loadTemplate(type: WorkoutType) {
-    updateDraft('workoutType', type)
-    if (type === 'Upper' || type === 'Lower') {
-      updateDraft(
-        'exercises',
-        workoutTemplates[type].map((exercise) => ({ ...exercise, id: makeId(), completedSets: 0 })),
-      )
-    }
-    if (type === 'Cardio' || type === 'Rest' || type === 'Recovery') {
-      updateDraft('exercises', [])
-    }
-  }
-
   function updateExercise(id: string, patch: Partial<ExerciseEntry>) {
     updateDraft(
       'exercises',
@@ -1107,10 +1056,6 @@ function App() {
 
   function updateMeal(id: string, patch: Partial<MealEntry>) {
     updateDraft('meals', draft.meals.map((meal) => (meal.id === id ? { ...meal, ...patch } : meal)))
-  }
-
-  function addExercise() {
-    updateDraft('exercises', [...draft.exercises, makeExercise('New exercise')])
   }
 
   function removeExercise(id: string) {
@@ -1219,10 +1164,8 @@ function App() {
           <WorkoutView
             draft={draft}
             logs={logs}
-            loadTemplate={loadTemplate}
             updateDraft={updateDraft}
             updateExercise={updateExercise}
-            addExercise={addExercise}
             removeExercise={removeExercise}
           />
         )}
@@ -1665,44 +1608,20 @@ function TodayView({
 function WorkoutView({
   draft,
   logs,
-  loadTemplate,
   updateDraft,
   updateExercise,
-  addExercise,
   removeExercise,
 }: {
   draft: DailyLog
   logs: DailyLog[]
-  loadTemplate: (type: WorkoutType) => void
   updateDraft: <K extends keyof DailyLog>(key: K, value: DailyLog[K]) => void
   updateExercise: (id: string, patch: Partial<ExerciseEntry>) => void
-  addExercise: () => void
   removeExercise: (id: string) => void
 }) {
-  const [selectedWorkoutType, setSelectedWorkoutType] = useState<WorkoutType>(draft.workoutType)
   const [rawWorkoutText, setRawWorkoutText] = useState('')
   const [rawWorkoutMessage, setRawWorkoutMessage] = useState('')
 
-  useEffect(() => {
-    setSelectedWorkoutType(draft.workoutType)
-  }, [draft.date, draft.workoutType])
-
-  const isViewingSavedType = selectedWorkoutType === draft.workoutType
-  const visibleExercises = isViewingSavedType ? draft.exercises : []
   const exerciseHistory = useMemo(() => buildExerciseHistory(logs, draft.date), [logs, draft.date])
-  const frequentExercises = useMemo(() => getFrequentExercises(logs), [logs])
-  const previousWorkout = useMemo(() => getLastWorkout(logs, draft.date), [logs, draft.date])
-
-  function addFrequentExercise(name: string) {
-    const canonical = canonicalExerciseName(name)
-    const history = exerciseHistory.get(canonical)
-
-    const nextExercise = history
-      ? makeExercise(name, history.lastPatch.weight, history.lastPatch.unit, history.lastPatch.sets, history.lastPatch.reps)
-      : makeExercise(name)
-
-    updateDraft('exercises', [...draft.exercises, nextExercise])
-  }
 
   function applyRawWorkoutText() {
     if (!rawWorkoutText.trim()) {
@@ -1719,7 +1638,6 @@ function WorkoutView({
 
     updateDraft('weightKg', parsed.weightKg)
     updateDraft('workoutType', parsed.workoutType)
-    setSelectedWorkoutType(parsed.workoutType)
     updateDraft('treadmillDistanceKm', parsed.treadmillDistanceKm)
     updateDraft('treadmillMinutes', parsed.treadmillMinutes)
     updateDraft('treadmillIncline', parsed.treadmillIncline || draft.treadmillIncline)
@@ -1727,42 +1645,8 @@ function WorkoutView({
     updateDraft('notes', buildNotesWithRawWorkout(draft.notes, rawWorkoutText))
 
     setRawWorkoutMessage(
-      `Applied ${parsed.exercises.length} exercise${parsed.exercises.length === 1 ? '' : 's'} to ${formatDateShort(draft.date)} as ${parsed.workoutType}. Click Save log to sync.`,
+      `Applied ${parsed.exercises.length} exercise${parsed.exercises.length === 1 ? '' : 's'} to ${formatDateShort(draft.date)}. GymOS classified it as ${parsed.workoutType}. Click Save log to sync.`,
     )
-  }
-
-  function copyPreviousWorkout() {
-    if (!previousWorkout) return
-
-    const confirmed = window.confirm(
-      `Copy ${previousWorkout.workoutType} workout from ${formatDateShort(previousWorkout.date)} into this date? This replaces the current exercises.`,
-    )
-
-    if (!confirmed) return
-
-    updateDraft('workoutType', previousWorkout.workoutType)
-    setSelectedWorkoutType(previousWorkout.workoutType)
-    updateDraft(
-      'exercises',
-      previousWorkout.exercises.map((exercise) => ({
-        ...exercise,
-        id: makeId(),
-        completedSets: 0,
-      })),
-    )
-    updateDraft('treadmillDistanceKm', previousWorkout.treadmillDistanceKm)
-    updateDraft('treadmillMinutes', previousWorkout.treadmillMinutes)
-    updateDraft('treadmillIncline', previousWorkout.treadmillIncline)
-    updateDraft('notes', buildNotesWithRawWorkout(draft.notes, `Copied workout from ${formatDateShort(previousWorkout.date)}`))
-  }
-
-  function applySelectedTemplate() {
-    const confirmed = window.confirm(
-      `Replace this day with a ${selectedWorkoutType} template? This will overwrite the current saved workout fields for this date.`,
-    )
-
-    if (!confirmed) return
-    loadTemplate(selectedWorkoutType)
   }
 
   return (
@@ -1770,7 +1654,7 @@ function WorkoutView({
       <section className="panel span-2 raw-workout-panel">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Fast workout import</p>
+            <p className="eyebrow">Workout input</p>
             <h3>Paste today’s workout</h3>
           </div>
           <button className="primary-button" type="button" onClick={applyRawWorkoutText}>
@@ -1780,7 +1664,7 @@ function WorkoutView({
 
         <p className="helper-copy">
           Paste the exact format you already use. GymOS will extract weight, treadmill data, exercises, sets,
-          reps, and normalise exercise names. Then review below and hit Save log.
+          reps, normalise exercise names, and infer whether it was Upper, Lower, Cardio, or Custom.
         </p>
 
         <textarea
@@ -1809,203 +1693,104 @@ Plank: , 3, 30 seconds`}
         </div>
       </section>
 
-      <section className="panel span-2">
-        <div className="section-heading">
+      <section className="panel span-2 form-panel">
+        <div className="section-heading compact">
           <div>
-            <p className="eyebrow">Manual adjustments</p>
-            <h3>Review parsed workout</h3>
+            <p className="eyebrow">Parsed result</p>
+            <h3>{draft.workoutType} workout</h3>
           </div>
-          <div className="workout-header-actions">
-            <button
-              className="ghost-button"
-              type="button"
-              onClick={copyPreviousWorkout}
-              disabled={!previousWorkout || !isViewingSavedType}
-            >
-              Copy previous
-            </button>
-            <button className="ghost-button" type="button" onClick={addExercise} disabled={!isViewingSavedType}>
-              Add exercise
-            </button>
-          </div>
+          <span className="status-pill">{draft.exercises.length} exercises</span>
         </div>
 
-        <div className="template-row">
-          {(['Upper', 'Lower', 'Cardio', 'Recovery', 'Rest', 'Custom'] as WorkoutType[]).map((type) => (
-            <button
-              key={type}
-              type="button"
-              className={selectedWorkoutType === type ? 'chip active' : 'chip'}
-              onClick={() => setSelectedWorkoutType(type)}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-
-        <p className="helper-copy tight">
-          These chips are a view selector first. They will not overwrite a saved day unless you explicitly apply a template.
-        </p>
-
-        {isViewingSavedType && frequentExercises.length > 0 && (
-          <div className="frequent-exercise-panel">
-            <div>
-              <p className="eyebrow">Quick add</p>
-              <h4>Frequent exercises</h4>
+        <div className="exercise-list">
+          {draft.exercises.length === 0 && (
+            <div className="empty-state">
+              No workout parsed yet. Paste your workout above, apply it to this date, review the result, then Save log.
             </div>
-            <div className="frequent-exercise-row">
-              {frequentExercises.map((exercise) => (
-                <button
-                  key={canonicalExerciseName(exercise.displayName)}
-                  className="frequent-exercise-chip"
-                  type="button"
-                  onClick={() => addFrequentExercise(exercise.displayName)}
-                >
-                  <strong>{displayExerciseName(exercise.displayName)}</strong>
-                  <span>{exercise.count}× · last {formatDateShort(exercise.latestDate)}</span>
+          )}
+
+          {draft.exercises.map((exercise) => {
+            const canonicalName = canonicalExerciseName(exercise.name)
+            const history = exerciseHistory.get(canonicalName)
+            const performanceBadge = getExercisePerformanceBadge(exercise, history)
+
+            return (
+              <article className="exercise-card" key={exercise.id}>
+                <div className="exercise-main">
+                  <div className="exercise-title-row">
+                    <input
+                      aria-label="Exercise name"
+                      className="exercise-name"
+                      value={exercise.name}
+                      onChange={(event) => updateExercise(exercise.id, { name: event.target.value })}
+                    />
+                    {performanceBadge && (
+                      <span className={`performance-badge ${performanceBadge.tone}`}>
+                        {performanceBadge.label}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mini-grid">
+                    <input
+                      aria-label="Weight"
+                      placeholder="Weight"
+                      value={exercise.weight}
+                      onChange={(event) => updateExercise(exercise.id, { weight: event.target.value })}
+                    />
+                    <select
+                      aria-label="Unit"
+                      value={exercise.unit}
+                      onChange={(event) =>
+                        updateExercise(exercise.id, { unit: event.target.value as ExerciseEntry['unit'] })
+                      }
+                    >
+                      <option value="lbs">lbs</option>
+                      <option value="kg">kg</option>
+                      <option value="bodyweight">bodyweight</option>
+                    </select>
+                    <input
+                      aria-label="Sets"
+                      placeholder="Sets"
+                      value={exercise.sets}
+                      onChange={(event) => updateExercise(exercise.id, { sets: event.target.value })}
+                    />
+                    <input
+                      aria-label="Reps"
+                      placeholder="Reps"
+                      value={exercise.reps}
+                      onChange={(event) => updateExercise(exercise.id, { reps: event.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {history && (
+                  <div className="exercise-history-strip">
+                    <span>Last: {history.lastLabel}</span>
+                    <span>Best: {history.bestLabel}</span>
+                    <button
+                      className="micro-button"
+                      type="button"
+                      onClick={() => updateExercise(exercise.id, history.lastPatch)}
+                    >
+                      Copy last
+                    </button>
+                  </div>
+                )}
+
+                <button className="danger-button" type="button" onClick={() => removeExercise(exercise.id)}>
+                  Remove
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="panel span-2 form-panel">
-        <div className="section-heading compact">
-          <div>
-            <p className="eyebrow">Strength work</p>
-            <h3>{selectedWorkoutType} exercises</h3>
-          </div>
-          <span className="status-pill">{visibleExercises.length} items</span>
+              </article>
+            )
+          })}
         </div>
-
-        {!isViewingSavedType && (
-          <div className="empty-state action-state">
-            <strong>
-              No {selectedWorkoutType} data is saved for{' '}
-              {new Date(`${draft.date}T00:00:00`).toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'short',
-              })}
-              .
-            </strong>
-            <span>
-              The saved log for this date is marked as {draft.workoutType}. Switching views no longer mutates your real data.
-            </span>
-            <button className="ghost-button" type="button" onClick={applySelectedTemplate}>
-              Replace this day with a {selectedWorkoutType} template
-            </button>
-          </div>
-        )}
-
-        {isViewingSavedType && (
-          <div className="exercise-list">
-            {visibleExercises.length === 0 && (
-              <div className="empty-state">
-                No exercises logged yet. Paste your workout above, copy a previous workout, or add one manually.
-              </div>
-            )}
-
-            {visibleExercises.map((exercise) => {
-              const canonicalName = canonicalExerciseName(exercise.name)
-              const history = exerciseHistory.get(canonicalName)
-              const performanceBadge = getExercisePerformanceBadge(exercise, history)
-
-              return (
-                <article className="exercise-card" key={exercise.id}>
-                  <div className="exercise-main">
-                    <div className="exercise-title-row">
-                      <input
-                        aria-label="Exercise name"
-                        className="exercise-name"
-                        value={exercise.name}
-                        onChange={(event) => updateExercise(exercise.id, { name: event.target.value })}
-                      />
-                      {performanceBadge && (
-                        <span className={`performance-badge ${performanceBadge.tone}`}>
-                          {performanceBadge.label}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mini-grid">
-                      <input
-                        aria-label="Weight"
-                        placeholder="Weight"
-                        value={exercise.weight}
-                        onChange={(event) => updateExercise(exercise.id, { weight: event.target.value })}
-                      />
-                      <select
-                        aria-label="Unit"
-                        value={exercise.unit}
-                        onChange={(event) =>
-                          updateExercise(exercise.id, { unit: event.target.value as ExerciseEntry['unit'] })
-                        }
-                      >
-                        <option value="lbs">lbs</option>
-                        <option value="kg">kg</option>
-                        <option value="bodyweight">bodyweight</option>
-                      </select>
-                      <input
-                        aria-label="Sets"
-                        placeholder="Sets"
-                        value={exercise.sets}
-                        onChange={(event) => updateExercise(exercise.id, { sets: event.target.value })}
-                      />
-                      <input
-                        aria-label="Reps"
-                        placeholder="Reps"
-                        value={exercise.reps}
-                        onChange={(event) => updateExercise(exercise.id, { reps: event.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  {history && (
-                    <div className="exercise-history-strip">
-                      <span>Last: {history.lastLabel}</span>
-                      <span>Best: {history.bestLabel}</span>
-                      <button
-                        className="micro-button"
-                        type="button"
-                        onClick={() => updateExercise(exercise.id, history.lastPatch)}
-                      >
-                        Copy last
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="set-dots" aria-label="Completed sets">
-                    {Array.from({ length: Math.max(Number(exercise.sets) || 0, 1) }).map((_, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        className={index < exercise.completedSets ? 'done' : ''}
-                        onClick={() =>
-                          updateExercise(exercise.id, {
-                            completedSets: index + 1 === exercise.completedSets ? index : index + 1,
-                          })
-                        }
-                        aria-label={`Mark set ${index + 1}`}
-                      >
-                        {index + 1}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button className="danger-button" type="button" onClick={() => removeExercise(exercise.id)}>
-                    Remove
-                  </button>
-                </article>
-              )
-            })}
-          </div>
-        )}
       </section>
 
       <section className="panel span-2 form-panel">
         <div className="section-heading compact">
           <div>
-            <p className="eyebrow">Always after weights</p>
+            <p className="eyebrow">Parsed cardio</p>
             <h3>Treadmill / cardio</h3>
           </div>
         </div>
@@ -2487,50 +2272,6 @@ function getLastWorkout(logs: DailyLog[], beforeDate?: string) {
   }
 
   return sorted.find((log) => log.date < beforeDate) ?? sorted.find((log) => log.date !== beforeDate) ?? null
-}
-
-function getFrequentExercises(logs: DailyLog[], limit = 12) {
-  const counts = new Map<
-    string,
-    {
-      displayName: string
-      count: number
-      latestDate: string
-      latestExercise: ExerciseEntry
-    }
-  >()
-
-  for (const log of logs) {
-    for (const exercise of log.exercises) {
-      const canonical = canonicalExerciseName(exercise.name)
-      if (!canonical) continue
-
-      const existing = counts.get(canonical)
-      if (!existing) {
-        counts.set(canonical, {
-          displayName: displayExerciseName(canonical),
-          count: 1,
-          latestDate: log.date,
-          latestExercise: exercise,
-        })
-        continue
-      }
-
-      existing.count += 1
-
-      if (log.date > existing.latestDate) {
-        existing.latestDate = log.date
-        existing.latestExercise = exercise
-      }
-    }
-  }
-
-  return [...counts.values()]
-    .sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count
-      return b.latestDate.localeCompare(a.latestDate)
-    })
-    .slice(0, limit)
 }
 
 function getNextWorkoutRecommendation(logs: DailyLog[], draft: DailyLog) {
