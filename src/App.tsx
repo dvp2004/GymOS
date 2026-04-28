@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { ChangeEvent, FormEvent } from 'react'
+import type { ChangeEvent, FormEvent, PointerEvent } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from './lib/supabase'
 import './App.css'
@@ -8,9 +8,10 @@ import './App.css'
 const EXISTING_CHATGPT_COACH_URL = import.meta.env.VITE_EXISTING_CHATGPT_COACH_URL ?? ''
 
 type Tab = 'today' | 'workout' | 'nutrition' | 'trends' | 'coach'
-type WorkoutType = 'Upper' | 'Lower' | 'Cardio' | 'Recovery' | 'Rest' | 'Custom'
+type WorkoutType = 'Upper' | 'Lower' | 'Mix' | 'Cardio' | 'Recovery' | 'Rest' | 'Custom'
 type SyncState = 'local' | 'checking' | 'syncing' | 'synced' | 'error'
 type AuthMode = 'sign-in' | 'sign-up'
+type TrainingKind = 'upper' | 'lower' | 'mix' | 'cardio' | 'none'
 
 type ExerciseEntry = {
   id: string
@@ -159,6 +160,30 @@ const MEAL_TAGS: Array<{ id: MealTag; label: string }> = [
 
 const MEAL_TAG_IDS = new Set<MealTag>(MEAL_TAGS.map((tag) => tag.id))
 
+const LOWER_EXERCISE_CANONICALS = new Set([
+  'squat',
+  'reverse-lunge',
+  'leg-curl',
+  'leg-extension',
+  'standing-calf-raise',
+  'dumbbell-romanian-deadlift',
+  'plank',
+])
+
+const UPPER_EXERCISE_CANONICALS = new Set([
+  'front-lat-pulldown',
+  'machine-chest-press',
+  'machine-shoulder-press',
+  'machine-triceps-pushdown',
+  'triceps-extension',
+  'seated-row',
+  'single-arm-row',
+  'bicep-curl',
+  'hammer-curl',
+  'dumbbell-lateral-raise',
+  'shoulder-shrug',
+])
+
 function makeId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID()
@@ -175,6 +200,43 @@ function makeMeal(label: MealEntry['label'], description = ''): MealEntry {
     proteinScore: 1,
     tags: [],
   }
+}
+
+function classifyTrainingKind(exercises: ExerciseEntry[], hasCardio: boolean): TrainingKind {
+  let hasUpper = false
+  let hasLower = false
+
+  for (const exercise of exercises) {
+    const canonical = canonicalExerciseName(exercise.name)
+
+    if (UPPER_EXERCISE_CANONICALS.has(canonical)) hasUpper = true
+    if (LOWER_EXERCISE_CANONICALS.has(canonical)) hasLower = true
+  }
+
+  if (hasUpper && hasLower) return 'mix'
+  if (hasUpper) return 'upper'
+  if (hasLower) return 'lower'
+  if (hasCardio && !exercises.length) return 'cardio'
+
+  return 'none'
+}
+
+function trainingKindToWorkoutType(kind: TrainingKind): WorkoutType {
+  if (kind === 'upper') return 'Upper'
+  if (kind === 'lower') return 'Lower'
+  if (kind === 'mix') return 'Mix'
+  if (kind === 'cardio') return 'Cardio'
+
+  return 'Rest'
+}
+
+function getDefaultWorkoutTypeForDate(date: string): WorkoutType {
+  const day = new Date(`${date}T00:00:00`).getDay()
+
+  if (day === 1 || day === 3 || day === 5) return 'Upper'
+  if (day === 2 || day === 4) return 'Lower'
+
+  return 'Rest'
 }
 
 function buildTrendSeries(logs: DailyLog[], metric: TrendMetric) {
@@ -247,35 +309,55 @@ function TrendLineChart({
   })
 
   const path = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ')
-  const activePoint = activePointIndex !== null ? points[activePointIndex] : null
+  const activePoint = activePointIndex !== null ? points[activePointIndex] : points[points.length - 1]
+
+  function setActiveFromPointer(event: PointerEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const pointerX = ((event.clientX - rect.left) / rect.width) * width
+
+    const nearest = points.reduce((winner, point) => {
+      return Math.abs(point.x - pointerX) < Math.abs(winner.x - pointerX) ? point : winner
+    }, points[0])
+
+    setActivePointIndex(nearest.index)
+  }
 
   return (
     <div className="trend-chart-wrap">
       <div className="trend-chart-frame">
-        <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Trend chart">
+        <svg
+          className="trend-chart"
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label="Trend chart"
+          onPointerMove={setActiveFromPointer}
+          onPointerDown={setActiveFromPointer}
+          onPointerLeave={() => setActivePointIndex(null)}
+        >
+          <rect className="trend-chart-hitband" x="0" y="0" width={width} height={height} />
           <line x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
           <line x1={padding} x2={padding} y1={padding} y2={height - padding} />
+
+          {activePoint && (
+            <line
+              className="trend-chart-crosshair"
+              x1={activePoint.x}
+              x2={activePoint.x}
+              y1={padding}
+              y2={height - padding}
+            />
+          )}
 
           <polyline points={path} fill="none" />
 
           {points.map((point) => (
-            <g key={`${point.date}-${point.value}`}>
-              <circle
-                className="trend-chart-hit"
-                cx={point.x}
-                cy={point.y}
-                r={14}
-                onMouseEnter={() => setActivePointIndex(point.index)}
-                onMouseLeave={() => setActivePointIndex(null)}
-                onClick={() => setActivePointIndex(point.index)}
-              />
-              <circle
-                className={`trend-chart-point ${activePointIndex === point.index ? 'active' : ''}`}
-                cx={point.x}
-                cy={point.y}
-                r={activePointIndex === point.index ? 6 : 5}
-              />
-            </g>
+            <circle
+              key={`${point.date}-${point.value}`}
+              className={`trend-chart-point ${activePoint?.index === point.index ? 'active' : ''}`}
+              cx={point.x}
+              cy={point.y}
+              r={activePoint?.index === point.index ? 7 : 5}
+            />
           ))}
         </svg>
 
@@ -299,7 +381,7 @@ function TrendLineChart({
       <div className="trend-chart-caption">
         <span>{formatDateShort(series[0].date)}</span>
         <strong>
-          Latest {series[series.length - 1].value.toFixed(1)}
+          Latest point {series[series.length - 1].value.toFixed(1)}
           {suffix}
         </strong>
         <span>{formatDateShort(series[series.length - 1].date)}</span>
@@ -322,7 +404,7 @@ function createEmptyLog(date = toInputDate(new Date())): DailyLog {
     weightKg: '',
     waistSizeCm: '',
     sleepHours: '',
-    workoutType: 'Custom',
+    workoutType: getDefaultWorkoutTypeForDate(date),
     gymTime: '',
     preWorkout: '',
     postGymEnergy: '',
@@ -487,47 +569,7 @@ function parseExerciseLine(line: string): ExerciseEntry | null {
 }
 
 function inferWorkoutTypeFromExercises(exercises: ExerciseEntry[], hasCardio: boolean): WorkoutType {
-  if (!exercises.length && hasCardio) return 'Cardio'
-  if (!exercises.length) return 'Custom'
-
-  const lowerExercises = new Set([
-    'squat',
-    'reverse-lunge',
-    'leg-curl',
-    'leg-extension',
-    'standing-calf-raise',
-    'dumbbell-romanian-deadlift',
-    'plank',
-  ])
-
-  const upperExercises = new Set([
-    'front-lat-pulldown',
-    'machine-chest-press',
-    'machine-shoulder-press',
-    'machine-triceps-pushdown',
-    'triceps-extension',
-    'seated-row',
-    'single-arm-row',
-    'bicep-curl',
-    'hammer-curl',
-    'dumbbell-lateral-raise',
-    'shoulder-shrug',
-  ])
-
-  let lowerScore = 0
-  let upperScore = 0
-
-  for (const exercise of exercises) {
-    const canonical = canonicalExerciseName(exercise.name)
-
-    if (lowerExercises.has(canonical)) lowerScore += 1
-    if (upperExercises.has(canonical)) upperScore += 1
-  }
-
-  if (lowerScore > upperScore) return 'Lower'
-  if (upperScore > lowerScore) return 'Upper'
-
-  return 'Custom'
+  return trainingKindToWorkoutType(classifyTrainingKind(exercises, hasCardio))
 }
 
 function parseRawWorkoutText(raw: string): ParsedWorkoutText {
@@ -622,7 +664,7 @@ function getWeightValues(logs: DailyLog[]) {
 }
 
 function normaliseWorkoutType(value: string | null): WorkoutType {
-  const allowed: WorkoutType[] = ['Upper', 'Lower', 'Cardio', 'Recovery', 'Rest', 'Custom']
+  const allowed: WorkoutType[] = ['Upper', 'Lower', 'Mix', 'Cardio', 'Recovery', 'Rest', 'Custom']
   return allowed.includes(value as WorkoutType) ? (value as WorkoutType) : 'Custom'
 }
 
@@ -1583,9 +1625,8 @@ function TodayView({
   const sparkline = useMemo(() => getWeightSparklinePoints(logs), [logs])
   const coverage = useMemo(() => buildDataCoverage(logs), [logs])
   const bodyStatus = draft.weightKg ? `${draft.weightKg} kg` : stats.latestWeightLabel
-  const workoutSummary = draft.exercises.length
-    ? `${draft.exercises.length} exercises · ${draft.treadmillDistanceKm || '—'} km treadmill`
-    : 'No workout details saved yet'
+  const workoutSummary = draft.exercises.length ? `${draft.exercises.length} exercises · ${draft.treadmillDistanceKm || '—'} km treadmill` : 'No workout details saved yet'
+  const plannedWorkout = hasWorkoutData(draft) ? draft.workoutType === 'Custom' ? getDefaultWorkoutTypeForDate(draft.date) : draft.workoutType : getDefaultWorkoutTypeForDate(draft.date)
 
   return (
     <div className="today-layout">
@@ -1627,6 +1668,7 @@ function TodayView({
               onChange={(event) => updateDraft('weightKg', event.target.value)}
             />
           </label>
+
           <label>
             Waist cm
             <input
@@ -1636,6 +1678,7 @@ function TodayView({
               onChange={(event) => updateDraft('waistSizeCm', event.target.value)}
             />
           </label>
+
           <label>
             Sleep
             <input
@@ -1644,6 +1687,22 @@ function TodayView({
               value={draft.sleepHours}
               onChange={(event) => updateDraft('sleepHours', event.target.value)}
             />
+          </label>
+
+          <label>
+            Today’s plan
+            <select
+              value={
+                plannedWorkout === 'Upper' || plannedWorkout === 'Lower' || plannedWorkout === 'Rest'
+                  ? plannedWorkout
+                  : getDefaultWorkoutTypeForDate(draft.date)
+              }
+              onChange={(event) => updateDraft('workoutType', event.target.value as WorkoutType)}
+            >
+              <option value="Upper">Upper</option>
+              <option value="Lower">Lower</option>
+              <option value="Rest">Rest</option>
+            </select>
           </label>
         </div>
       </section>
@@ -1657,7 +1716,7 @@ function TodayView({
         </article>
         <article className="metric-card">
           <p>Today’s workout</p>
-          <strong>{draft.workoutType}</strong>
+          <strong>{plannedWorkout}</strong>
           <span>{workoutSummary}</span>
         </article>
         <article className="metric-card">
@@ -2236,11 +2295,10 @@ function TrendsView({
         </div>
 
         <div className="heatmap-legend">
-          <span><i className="heat-cell level-1" /> Light / short</span>
-          <span><i className="heat-cell level-2" /> Normal</span>
-          <span><i className="heat-cell level-3" /> Higher volume</span>
-          <span><i className="heat-cell lower" /> Lower day</span>
-          <span><i className="heat-cell cardio" /> Cardio emphasis</span>
+          <span><i className="heat-cell upper" /> Upper</span>
+          <span><i className="heat-cell lower" /> Lower</span>
+          <span><i className="heat-cell mix" /> Mix</span>
+          <span><i className="heat-cell cardio" /> Cardio only</span>
         </div>
 
         <div className="heatmap-weekdays" aria-hidden="true">
@@ -2252,7 +2310,7 @@ function TrendsView({
         <div className="heatmap-grid" aria-label="Workout consistency heatmap">
           {heatmap.days.map((day) => (
             <span
-              className={`heat-cell level-${day.level} ${day.type.toLowerCase()} ${day.hasCardio ? 'cardio' : ''}`}
+              className={`heat-cell ${day.kind}`}
               key={day.date}
               title={`${formatDateShort(day.date)} · ${day.type}`}
             />
@@ -2260,7 +2318,7 @@ function TrendsView({
         </div>
 
         <p className="helper-copy tight">
-          Colour shows workout type/intensity. Empty cells are non-training or unlogged days.
+          Colour shows strict workout classification. Cardio only appears when no upper or lower strength work was logged that day.
         </p>
 
         <div className="coverage-grid">
@@ -2372,7 +2430,9 @@ function TrendsView({
           <article className="analysis-card">
             <span>Split balance</span>
             <strong>{splitCounts.summary}</strong>
-            <p>Upper {splitCounts.Upper} · Lower {splitCounts.Lower} · Cardio {splitCounts.Cardio} · Rest {splitCounts.Rest}</p>
+            <p>
+              Upper {splitCounts.Upper} · Lower {splitCounts.Lower} · Mix {splitCounts.Mix} · Cardio {splitCounts.Cardio} · Rest {splitCounts.Rest}
+            </p>
           </article>
           <article className="analysis-card">
             <span>Cardio best</span>
@@ -2783,24 +2843,24 @@ function buildConsistencyHeatmap(logs: DailyLog[]) {
   const days = Array.from({ length: 56 }).map((_, index) => {
     const date = new Date(start)
     date.setDate(start.getDate() + index)
+
     const iso = toInputDate(date)
     const log = logs.find((item) => item.date === iso)
-    const exerciseCount = log?.exercises.length ?? 0
     const hasCardio = Boolean(log?.treadmillDistanceKm || log?.treadmillMinutes)
+    const kind = log ? classifyTrainingKind(log.exercises, hasCardio) : 'none'
 
     return {
       date: iso,
       weekday: date.toLocaleDateString('en-GB', { weekday: 'short' }),
       dayNumber: date.getDate(),
-      level: log && hasWorkoutData(log) ? Math.min(3, Math.max(1, exerciseCount > 6 ? 3 : exerciseCount > 2 ? 2 : 1)) : 0,
-      type: log?.workoutType ?? 'Rest',
-      hasCardio,
+      kind,
+      type: trainingKindToWorkoutType(kind),
+      active: kind !== 'none',
     }
   })
 
-  const activeDays = days.filter((day) => day.level > 0).length
+  const activeDays = days.filter((day) => day.active).length
   const ratio = activeDays / days.length
-
   const tone = ratio >= 0.6 ? 'good' : ratio >= 0.35 ? 'medium' : 'low'
 
   return {
@@ -3196,6 +3256,7 @@ function buildSplitCounts(logs: DailyLog[]) {
   const counts: Record<WorkoutType, number> = {
     Upper: 0,
     Lower: 0,
+    Mix: 0,
     Cardio: 0,
     Recovery: 0,
     Rest: 0,

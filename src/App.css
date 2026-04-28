@@ -557,7 +557,7 @@ label {
 }
 
 .quick-inputs {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .insight-grid {
@@ -882,8 +882,8 @@ label {
 
 .heat-cell {
   min-height: 18px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.045);
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
   background: rgba(255, 255, 255, 0.055);
 }
 
@@ -898,14 +898,24 @@ label {
   border-color: rgba(217, 255, 66, 0.32);
 }
 
+.heat-cell.upper {
+  background: rgba(217, 255, 66, 0.46);
+  border-color: rgba(217, 255, 66, 0.34);
+}
+
 .heat-cell.lower {
-  background: rgba(117, 167, 255, 0.44);
-  border-color: rgba(117, 167, 255, 0.32);
+  background: rgba(117, 167, 255, 0.48);
+  border-color: rgba(117, 167, 255, 0.34);
+}
+
+.heat-cell.mix {
+  background: rgba(159, 123, 255, 0.48);
+  border-color: rgba(159, 123, 255, 0.34);
 }
 
 .heat-cell.cardio {
-  background: rgba(255, 159, 67, 0.44);
-  border-color: rgba(255, 159, 67, 0.32);
+  background: rgba(255, 159, 67, 0.5);
+  border-color: rgba(255, 159, 67, 0.36);
 }
 
 .coverage-grid {
@@ -1797,6 +1807,17 @@ label {
   position: relative;
 }
 
+.trend-chart-hitband {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.trend-chart-crosshair {
+  stroke: rgba(217, 255, 66, 0.28);
+  stroke-width: 2;
+  stroke-dasharray: 6 7;
+}
+
 .trend-chart-hit {
   fill: transparent;
   cursor: pointer;
@@ -1806,19 +1827,16 @@ label {
   fill: var(--acid);
   stroke: rgba(5, 6, 7, 0.9);
   stroke-width: 3;
-  transition:
-    r 0.15s ease,
-    transform 0.15s ease,
-    filter 0.15s ease;
+  pointer-events: none;
 }
 
 .trend-chart-point.active {
-  filter: drop-shadow(0 0 10px rgba(217, 255, 66, 0.35));
+  filter: drop-shadow(0 0 10px rgba(217, 255, 66, 0.4));
 }
 
 .trend-chart-tooltip {
   position: absolute;
-  z-index: 2;
+  z-index: 5;
   min-width: 110px;
   padding: 0.7rem 0.85rem;
   border-radius: 16px;
