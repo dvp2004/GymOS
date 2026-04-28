@@ -130,3 +130,39 @@ Do not request Gmail scopes. GymOS only needs identity sign-in, not email inbox 
 - Workout chips now act as safe view selectors. Clicking Lower on an Upper day will not overwrite the saved Upper exercises. You must explicitly apply a template to replace the day.
 - Trends now includes an exercise progression board, split balance, cardio bests, and volume leaders based on repeated exercises.
 - Imported data stays in Supabase after one successful import. You do not need to import the JSON again after refresh or re-opening the app.
+
+## v10 Product Redesign Notes
+
+This build moves GymOS away from a form-first prototype and towards a mobile-first gym companion.
+
+### Added in v10
+
+- Premium dark UI with design tokens, glass panels, stronger typography, and mobile-first spacing.
+- Bottom tab navigation on mobile for iPhone use.
+- Redesigned Today screen with:
+  - suggested next workout,
+  - weekly consistency dots,
+  - body-status card,
+  - weight sparkline,
+  - cardio and data-quality cards,
+  - last-session summary.
+- Workout logging improvements:
+  - workout-type chips remain view selectors,
+  - replacing a saved day with a template now requires explicit confirmation,
+  - exercise cards show previous and best logged performance when history exists,
+  - one-tap “Copy last” support for recurring exercises.
+- Trends improvements:
+  - 8-week consistency heatmap,
+  - data coverage cards,
+  - improved exercise-progression and cardio summary presentation.
+- Added `.gitignore` so `.env` is not committed.
+
+### Important
+
+Run this once if `.env` is already tracked in Git:
+
+```bash
+git rm --cached .env
+```
+
+Keep real environment values in Vercel and your local `.env`; only `.env.example` belongs in the repository.
