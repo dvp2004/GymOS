@@ -220,6 +220,8 @@ function TrendLineChart({
   series: Array<{ date: string; value: number }>
   suffix: string
 }) {
+  const [activePointIndex, setActivePointIndex] = useState<number | null>(null)
+
   if (series.length < 2) {
     return <div className="empty-state">Need at least 2 logged values for this chart.</div>
   }
@@ -240,31 +242,67 @@ function TrendLineChart({
       ...entry,
       x,
       y,
+      index,
     }
   })
 
   const path = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(' ')
-  const latest = points[points.length - 1]
+  const activePoint = activePointIndex !== null ? points[activePointIndex] : null
 
   return (
     <div className="trend-chart-wrap">
-      <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Trend chart">
-        <line x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
-        <line x1={padding} x2={padding} y1={padding} y2={height - padding} />
-        <polyline points={path} fill="none" />
-        {points.map((point) => (
-          <circle key={`${point.date}-${point.value}`} cx={point.x} cy={point.y}>
-            <title>{`${formatDateShort(point.date)} · ${point.value.toFixed(1)}${suffix}`}</title>
-          </circle>
-        ))}
-      </svg>
+      <div className="trend-chart-frame">
+        <svg className="trend-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Trend chart">
+          <line x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
+          <line x1={padding} x2={padding} y1={padding} y2={height - padding} />
+
+          <polyline points={path} fill="none" />
+
+          {points.map((point) => (
+            <g key={`${point.date}-${point.value}`}>
+              <circle
+                className="trend-chart-hit"
+                cx={point.x}
+                cy={point.y}
+                r={14}
+                onMouseEnter={() => setActivePointIndex(point.index)}
+                onMouseLeave={() => setActivePointIndex(null)}
+                onClick={() => setActivePointIndex(point.index)}
+              />
+              <circle
+                className={`trend-chart-point ${activePointIndex === point.index ? 'active' : ''}`}
+                cx={point.x}
+                cy={point.y}
+                r={activePointIndex === point.index ? 6 : 5}
+              />
+            </g>
+          ))}
+        </svg>
+
+        {activePoint && (
+          <div
+            className="trend-chart-tooltip"
+            style={{
+              left: `${(activePoint.x / width) * 100}%`,
+              top: `${(activePoint.y / height) * 100}%`,
+            }}
+          >
+            <strong>
+              {activePoint.value.toFixed(1)}
+              {suffix}
+            </strong>
+            <span>{formatDateShort(activePoint.date)}</span>
+          </div>
+        )}
+      </div>
+
       <div className="trend-chart-caption">
         <span>{formatDateShort(series[0].date)}</span>
         <strong>
-          Latest {latest.value.toFixed(1)}
+          Latest {series[series.length - 1].value.toFixed(1)}
           {suffix}
         </strong>
-        <span>{formatDateShort(latest.date)}</span>
+        <span>{formatDateShort(series[series.length - 1].date)}</span>
       </div>
     </div>
   )
