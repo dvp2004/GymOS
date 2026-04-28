@@ -125,9 +125,20 @@ type ParsedWorkoutText = {
   treadmillIncline: string
   workoutType: WorkoutType
   exercises: ExerciseEntry[]
+  warnings: ParserWarning[]
 }
 
 type TrendMetric = 'weight' | 'waist' | 'cardio-distance' | 'cardio-minutes'
+
+type ParserWarningLevel = 'info' | 'warning'
+
+type ParserWarning = {
+  id: string
+  level: ParserWarningLevel
+  message: string
+  line?: string
+  suggestion?: string
+}
 
 const TREND_METRICS: Array<{ id: TrendMetric; label: string }> = [
   { id: 'weight', label: 'Weight' },
@@ -200,6 +211,165 @@ function makeMeal(label: MealEntry['label'], description = ''): MealEntry {
     proteinScore: 1,
     tags: [],
   }
+}
+
+function getPreviousComparableWorkout(logs: DailyLog[], draft: DailyLog) {
+  const previousSameType = sortLogs(logs).find(
+    (log) => log.date < draft.date && log.workoutType === draft.workoutType && hasWorkoutData(log),
+  )
+
+  return previousSameType ?? getLastWorkout(logs, draft.date)
+}
+
+function compareExerciseToHistory(exercise: ExerciseEntry, history: ExerciseHistorySummary | undefined) {
+  if (!history) {
+    return 'New movement in the current dataset.'
+  }
+
+  const currentScore = getExerciseScore(exercise)
+
+  if (currentScore === null) {
+    return 'Logged, but missing enough load/reps data for comparison.'
+  }
+
+  if (history.bestScore !== null && currentScore > history.bestScore) {
+    return 'New best performance before saving today.'
+  }
+
+  if (history.bestScore !== null && currentScore === history.bestScore) {
+    return 'Matches previous best.'
+  }
+
+  if (history.lastScore !== null && currentScore > history.lastScore) {
+    return 'Improved versus last logged session.'
+  }
+
+  if (history.lastScore !== null && currentScore < history.lastScore) {
+    return 'Dropped versus last logged session.'
+  }
+
+  return 'Comparable but direction is unclear.'
+}
+
+function buildWorkoutCoachComparison(draft: DailyLog, logs: DailyLog[]) {
+  const previousComparable = getPreviousComparableWorkout(logs, draft)
+  const history = buildExerciseHistory(logs, draft.date)
+
+  return {
+    comparedWith: previousComparable
+      ? {
+          date: previousComparable.date,
+          workoutType: previousComparable.workoutType,
+          exerciseCount: previousComparable.exercises.length,
+          treadmillDistanceKm: previousComparable.treadmillDistanceKm || null,
+          treadmillMinutes: previousComparable.treadmillMinutes || null,
+        }
+      : null,
+    exerciseComparison: draft.exercises.map((exercise) => {
+      const canonical = canonicalExerciseName(exercise.name)
+      const exerciseHistory = history.get(canonical)
+
+      return {
+        name: displayExerciseName(canonical),
+        today: formatExerciseEntry(exercise),
+        bestBeforeToday: exerciseHistory?.bestLabel ?? null,
+        lastBeforeToday: exerciseHistory?.lastLabel ?? null,
+        status: compareExerciseToHistory(exercise, exerciseHistory),
+      }
+    }),
+  }
+}
+
+function makeParserWarning(
+  level: ParserWarningLevel,
+  message: string,
+  line?: string,
+  suggestion?: string,
+): ParserWarning {
+  return {
+    id: makeId(),
+    level,
+    message,
+    line,
+    suggestion,
+  }
+}
+
+function isKnownExerciseName(name: string) {
+  const cleaned = cleanExerciseName(name)
+
+  return EXERCISE_ALIASES.some((alias) =>
+    alias.patterns.some((pattern) => pattern.test(cleaned)),
+  )
+}
+
+function isSuspiciousSets(value: string) {
+  if (!value.trim()) return true
+  return !/^\d+(\.\d+)?$/.test(value.trim())
+}
+
+function isSuspiciousReps(value: string) {
+  const trimmed = value.trim().toLowerCase()
+  if (!trimmed) return true
+
+  if (/^\d+(\.\d+)?\s*(reps?|seconds?|secs?|sec|s)?$/.test(trimmed)) {
+    return false
+  }
+
+  return true
+}
+
+function buildExerciseParseWarnings(exercise: ExerciseEntry, originalLine: string) {
+  const warnings: ParserWarning[] = []
+
+  if (!isKnownExerciseName(exercise.name)) {
+    warnings.push(
+      makeParserWarning(
+        'info',
+        `New or unknown exercise detected: ${exercise.name}`,
+        originalLine,
+        'If this is a real recurring exercise, keep it. If not, correct the name before saving.',
+      ),
+    )
+  }
+
+  if (!exercise.sets || isSuspiciousSets(exercise.sets)) {
+    warnings.push(
+      makeParserWarning(
+        'warning',
+        `Sets look suspicious for ${exercise.name}.`,
+        originalLine,
+        'Expected something like 3.',
+      ),
+    )
+  }
+
+  if (!exercise.reps || isSuspiciousReps(exercise.reps)) {
+    warnings.push(
+      makeParserWarning(
+        'warning',
+        `Reps look suspicious for ${exercise.name}.`,
+        originalLine,
+        'Expected something like 12 or 30 seconds.',
+      ),
+    )
+  }
+
+  if (
+    /machine|curl|press|pulldown|pushdown|extension|row/i.test(originalLine) &&
+    !exercise.weight
+  ) {
+    warnings.push(
+      makeParserWarning(
+        'warning',
+        `Weight is missing for ${exercise.name}.`,
+        originalLine,
+        'If this was a machine/cable movement, add the load before saving.',
+      ),
+    )
+  }
+
+  return warnings
 }
 
 function classifyTrainingKind(exercises: ExerciseEntry[], hasCardio: boolean): TrainingKind {
@@ -583,10 +753,27 @@ function parseRawWorkoutText(raw: string): ParsedWorkoutText {
   let treadmillMinutes = ''
   let treadmillIncline = ''
   const exercises: ExerciseEntry[] = []
+  const warnings: ParserWarning[] = []
 
   for (const line of lines) {
     if (/^weight\s*:/i.test(line)) {
       weightKg = parseWorkoutWeightLine(line)
+
+      if (!weightKg) {
+        warnings.push(
+          makeParserWarning(
+            'info',
+            'Weight was left blank or unavailable.',
+            line,
+            'This is fine occasionally, but weight trends need repeated weigh-ins.',
+          ),
+        )
+      }
+
+      continue
+    }
+
+    if (/^treadmill\s*:/i.test(line)) {
       continue
     }
 
@@ -595,12 +782,38 @@ function parseRawWorkoutText(raw: string): ParsedWorkoutText {
       treadmillDistanceKm = treadmill.treadmillDistanceKm
       treadmillMinutes = treadmill.treadmillMinutes
       treadmillIncline = treadmill.treadmillIncline
+
+      if (treadmillDistanceKm && !treadmillMinutes) {
+        warnings.push(
+          makeParserWarning(
+            'warning',
+            'Treadmill distance was found but duration is missing.',
+            line,
+            'Add duration if you want cardio pace/progression to be useful.',
+          ),
+        )
+      }
+
       continue
     }
 
     const exercise = parseExerciseLine(line)
+
     if (exercise) {
       exercises.push(exercise)
+      warnings.push(...buildExerciseParseWarnings(exercise, line))
+      continue
+    }
+
+    if (line.includes(':')) {
+      warnings.push(
+        makeParserWarning(
+          'warning',
+          'This line was not understood by the parser.',
+          line,
+          'Check the format before saving.',
+        ),
+      )
     }
   }
 
@@ -614,6 +827,7 @@ function parseRawWorkoutText(raw: string): ParsedWorkoutText {
     treadmillIncline,
     workoutType,
     exercises,
+    warnings,
   }
 }
 
@@ -1831,6 +2045,7 @@ function WorkoutView({
 }) {
   const [rawWorkoutText, setRawWorkoutText] = useState('')
   const [rawWorkoutMessage, setRawWorkoutMessage] = useState('')
+  const [parseWarnings, setParseWarnings] = useState<ParserWarning[]>([])
 
   const exerciseHistory = useMemo(() => buildExerciseHistory(logs, draft.date), [logs, draft.date])
 
@@ -1841,6 +2056,7 @@ function WorkoutView({
     }
 
     const parsed = parseRawWorkoutText(rawWorkoutText)
+    setParseWarnings(parsed.warnings)
 
     if (!parsed.exercises.length && !parsed.treadmillDistanceKm && !parsed.treadmillMinutes && !parsed.weightKg) {
       setRawWorkoutMessage('Nothing useful was detected. Check the format and try again.')
@@ -1892,15 +2108,44 @@ Plank: , 3, 30 seconds`}
           onChange={(event) => {
             setRawWorkoutText(event.target.value)
             setRawWorkoutMessage('')
+            setParseWarnings([])
           }}
         />
 
         <div className="raw-workout-actions">
-          <button className="ghost-button" type="button" onClick={() => setRawWorkoutText('')}>
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => {
+              setRawWorkoutText('')
+              setRawWorkoutMessage('')
+              setParseWarnings([])
+            }}
+          >
             Clear
           </button>
           {rawWorkoutMessage && <span>{rawWorkoutMessage}</span>}
         </div>
+
+        {parseWarnings.length > 0 && (
+          <div className="parser-warning-list">
+            <div className="section-heading compact">
+              <div>
+                <p className="eyebrow">Parser review</p>
+                <h3>Check before saving</h3>
+              </div>
+              <span className="status-pill">{parseWarnings.length} flags</span>
+            </div>
+
+            {parseWarnings.map((warning) => (
+              <article className={`parser-warning ${warning.level}`} key={warning.id}>
+                <strong>{warning.message}</strong>
+                {warning.line && <code>{warning.line}</code>}
+                {warning.suggestion && <span>{warning.suggestion}</span>}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="panel span-2 form-panel">
@@ -3378,6 +3623,7 @@ function buildCoachPrompt(draft: DailyLog, logs: DailyLog[], question: string) {
   const stats = buildStats(logs)
   const exerciseDashboard = buildExerciseDashboard(logs)
   const nutritionTags = buildNutritionTagDashboard(logs)
+  const workoutComparison = buildWorkoutCoachComparison(draft, logs)
 
   const recentLogs = sortLogs(logs).slice(0, 14).map((log) => ({
     date: log.date,
@@ -3406,6 +3652,9 @@ Question: ${question}
 Today’s log:
 ${JSON.stringify(draft, null, 2)}
 
+Workout comparison:
+${JSON.stringify(workoutComparison, null, 2)}
+
 Recent trend summary:
 - 7-day average weight: ${formatKg(stats.sevenDayAverage)}
 - 14-day average weight: ${formatKg(stats.fourteenDayAverage)}
@@ -3422,12 +3671,13 @@ ${JSON.stringify(recentLogs, null, 2)}
 
 Give me:
 1. What went well in today’s workout
-2. What is weak or missing
-3. Whether the current training split looks balanced
-4. What the scale trend likely means, without overreacting
-5. What food/protein signal is missing
-6. Next workout recommendation
-7. One hard truth I may be avoiding`
+2. What changed compared with the previous comparable workout
+3. Which exercises improved, matched best, dropped, or lack enough data
+4. Whether today fits the intended weekly Upper/Lower/Rest structure
+5. What the scale/cardio trend means without overreacting
+6. What food/protein signal is missing
+7. What to do in the next workout
+8. One hard truth I may be avoiding`
 }
 
 export default App
