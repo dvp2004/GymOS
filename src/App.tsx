@@ -1411,6 +1411,43 @@ function WorkoutView({
   const isViewingSavedType = selectedWorkoutType === draft.workoutType
   const visibleExercises = isViewingSavedType ? draft.exercises : []
   const exerciseHistory = useMemo(() => buildExerciseHistory(logs, draft.date), [logs, draft.date])
+  const frequentExercises = useMemo(() => getFrequentExercises(logs), [logs])
+  const previousWorkout = useMemo(() => getLastWorkout(logs, draft.date), [logs, draft.date])
+
+  function addFrequentExercise(name: string) {
+    const canonical = canonicalExerciseName(name)
+    const history = exerciseHistory.get(canonical)
+
+    const nextExercise = history
+      ? makeExercise(name, history.lastPatch.weight, history.lastPatch.unit, history.lastPatch.sets, history.lastPatch.reps)
+      : makeExercise(name)
+
+    updateDraft('exercises', [...draft.exercises, nextExercise])
+  }
+
+  function copyPreviousWorkout() {
+    if (!previousWorkout) return
+
+    const confirmed = window.confirm(
+      `Copy ${previousWorkout.workoutType} workout from ${formatDateShort(previousWorkout.date)} into this date? This replaces the current exercises.`,
+    )
+
+    if (!confirmed) return
+
+    updateDraft('workoutType', previousWorkout.workoutType)
+    setSelectedWorkoutType(previousWorkout.workoutType)
+    updateDraft(
+      'exercises',
+      previousWorkout.exercises.map((exercise) => ({
+        ...exercise,
+        id: makeId(),
+        completedSets: 0,
+      })),
+    )
+    updateDraft('treadmillDistanceKm', previousWorkout.treadmillDistanceKm)
+    updateDraft('treadmillMinutes', previousWorkout.treadmillMinutes)
+    updateDraft('treadmillIncline', previousWorkout.treadmillIncline)
+  }
 
   function applySelectedTemplate() {
     const confirmed = window.confirm("Replace this day with a " + selectedWorkoutType + " template? This will overwrite the current saved workout fields for this date.")
@@ -1426,9 +1463,19 @@ function WorkoutView({
             <p className="eyebrow">Training plan</p>
             <h3>Workout builder</h3>
           </div>
-          <button className="ghost-button" type="button" onClick={addExercise} disabled={!isViewingSavedType}>
-            Add exercise
-          </button>
+          <div className="workout-header-actions">
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={copyPreviousWorkout}
+              disabled={!previousWorkout || !isViewingSavedType}
+            >
+              Copy previous
+            </button>
+            <button className="ghost-button" type="button" onClick={addExercise} disabled={!isViewingSavedType}>
+              Add exercise
+            </button>
+          </div>
         </div>
 
         <div className="template-row">
@@ -1446,6 +1493,27 @@ function WorkoutView({
         <p className="helper-copy tight">
           These chips are now a view selector first. They will not overwrite a saved day unless you explicitly apply a template.
         </p>
+        {isViewingSavedType && frequentExercises.length > 0 && (
+          <div className="frequent-exercise-panel">
+            <div>
+              <p className="eyebrow">Quick add</p>
+              <h4>Frequent exercises</h4>
+            </div>
+            <div className="frequent-exercise-row">
+              {frequentExercises.map((exercise) => (
+                <button
+                  key={canonicalExerciseName(exercise.displayName)}
+                  className="frequent-exercise-chip"
+                  type="button"
+                  onClick={() => addFrequentExercise(exercise.displayName)}
+                >
+                  <strong>{exercise.displayName}</strong>
+                  <span>{exercise.count}× · last {formatDateShort(exercise.latestDate)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="panel span-2 form-panel">
@@ -1996,6 +2064,51 @@ function hasWorkoutData(log: DailyLog) {
 
 function getLastWorkout(logs: DailyLog[], beforeDate?: string) {
   return sortLogs(logs).find((log) => log.date !== beforeDate && hasWorkoutData(log)) ?? null
+}
+
+function getFrequentExercises(logs: DailyLog[], limit = 12) {
+  const counts = new Map<
+    string,
+    {
+      displayName: string
+      count: number
+      latestDate: string
+      latestExercise: ExerciseEntry
+    }
+  >()
+
+  for (const log of logs) {
+    for (const exercise of log.exercises) {
+      const canonical = canonicalExerciseName(exercise.name)
+      if (!canonical) continue
+
+      const existing = counts.get(canonical)
+      if (!existing) {
+        counts.set(canonical, {
+          displayName: exercise.name,
+          count: 1,
+          latestDate: log.date,
+          latestExercise: exercise,
+        })
+        continue
+      }
+
+      existing.count += 1
+
+      if (log.date > existing.latestDate) {
+        existing.latestDate = log.date
+        existing.displayName = exercise.name
+        existing.latestExercise = exercise
+      }
+    }
+  }
+
+  return [...counts.values()]
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count
+      return b.latestDate.localeCompare(a.latestDate)
+    })
+    .slice(0, limit)
 }
 
 function getNextWorkoutRecommendation(logs: DailyLog[], draft: DailyLog) {
