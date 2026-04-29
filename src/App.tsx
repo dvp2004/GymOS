@@ -268,6 +268,15 @@ const GYM_QUOTES = [
   'Consistency is the compound interest of training.',
 ]
 
+function ensureDefaultMeals(meals: MealEntry[]) {
+  const existingByLabel = new Map(meals.map((meal) => [meal.label, meal]))
+
+  const defaultMeals = DEFAULT_MEAL_ORDER.map((label) => existingByLabel.get(label) ?? makeMeal(label))
+  const extraMeals = meals.filter((meal) => !DEFAULT_MEAL_ORDER.includes(meal.label))
+
+  return [...defaultMeals, ...extraMeals]
+}
+
 function AwardCategoryIcon({ category }: { category: AwardCategory }) {
   if (category === 'strength') {
     return (
@@ -330,10 +339,7 @@ function getMealByLabel(log: DailyLog, label: MealEntry['label']) {
 }
 
 function getDisplayMeals(log: DailyLog) {
-  const orderedMeals = DEFAULT_MEAL_ORDER.map((label) => getMealByLabel(log, label) ?? makeMeal(label))
-  const extraMeals = log.meals.filter((meal) => !DEFAULT_MEAL_ORDER.includes(meal.label))
-
-  return [...orderedMeals, ...extraMeals]
+  return ensureDefaultMeals(log.meals)
 }
 
 function makeId() {
@@ -906,13 +912,7 @@ function createEmptyLog(date = toInputDate(new Date())): DailyLog {
     cyclingCalories: '',
     notes: '',
     exercises: [],
-    meals: [
-      makeMeal('Pre-workout'),
-      makeMeal('Breakfast'),
-      makeMeal('Lunch'),
-      makeMeal('Dinner'),
-      makeMeal('Snack'),
-    ],
+    meals: DEFAULT_MEAL_ORDER.map((label) => makeMeal(label)),
     createdAt: now,
     updatedAt: now,
   }
@@ -1473,9 +1473,7 @@ function mapCloudRowsToLogs(rows: DailyLogRow[], exerciseRows: ExerciseRow[], me
       cyclingCalories: cloudText(row.cycling_calories),
       notes: cloudText(row.notes),
       exercises,
-      meals: meals.length
-        ? meals
-        : [makeMeal('Pre-workout'), makeMeal('Breakfast'), makeMeal('Lunch'), makeMeal('Dinner'), makeMeal('Snack')],
+      meals: ensureDefaultMeals(meals),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }
@@ -1688,7 +1686,7 @@ function normaliseImportedLog(raw: unknown): DailyLog {
     cyclingCalories: normaliseOptionalText(source.cyclingCalories),
     notes: typeof source.notes === 'string' ? source.notes : '',
     exercises,
-    meals: meals.length ? meals : base.meals,
+    meals: ensureDefaultMeals(meals.length ? meals : base.meals),
     createdAt: typeof source.createdAt === 'string' ? source.createdAt : base.createdAt,
     updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : new Date().toISOString(),
   }
@@ -1938,7 +1936,14 @@ function App() {
   }
 
   function updateMeal(id: string, patch: Partial<MealEntry>) {
-    updateDraft('meals', draft.meals.map((meal) => (meal.id === id ? { ...meal, ...patch } : meal)))
+    const currentMeals = ensureDefaultMeals(draft.meals)
+    const exists = currentMeals.some((meal) => meal.id === id)
+
+    const nextMeals = exists
+      ? currentMeals.map((meal) => (meal.id === id ? { ...meal, ...patch } : meal))
+      : [...currentMeals, { ...makeMeal('Other'), id, ...patch }]
+
+    updateDraft('meals', nextMeals)
   }
 
   function removeExercise(id: string) {
@@ -2945,7 +2950,8 @@ function NutritionView({
   updateMeal: (id: string, patch: Partial<MealEntry>) => void
   addMeal: () => void
 }) {
-  const dailyFoodCalories = getDailyFoodCalories(draft)
+  const displayMeals = getDisplayMeals(draft)
+  const dailyFoodCalories = getDailyFoodCalories({ meals: displayMeals })
 
   function addFoodItem(meal: MealEntry) {
     updateMeal(meal.id, {
@@ -2988,11 +2994,11 @@ function NutritionView({
         </p>
       </section>
 
-      {draft.meals.map((meal) => {
+      {displayMeals.map((meal) => {
         const mealCalories = getMealCalories(meal)
 
         return (
-          <section className="meal-card food-item-meal-card" key={meal.id}>
+          <section className="meal-card food-item-meal-card" key={`${meal.label}-${meal.id}`}>
             <div className="meal-header-row">
               <div>
                 <p className="eyebrow">{displayMealLabel(meal.label)}</p>
@@ -3063,9 +3069,9 @@ function NutritionView({
         </div>
 
         <div className="meal-calorie-breakdown">
-          {getDisplayMeals(draft).map((meal) => (
-            <article key={`${meal.label}-${meal.id}`}>
-              <span>{meal.label === 'Snack' ? 'Snacks' : meal.label}</span>
+          {displayMeals.map((meal) => (
+            <article key={`breakdown-${meal.label}-${meal.id}`}>
+              <span>{displayMealLabel(meal.label)}</span>
               <strong>{getMealCalories(meal) || '—'} kcal</strong>
             </article>
           ))}
@@ -3418,26 +3424,6 @@ function TrendsView({
                 .slice(0, 4)
                 .map((item) => `${item.name} ${item.volumeLabel}`)
                 .join(' · ') || 'Need more weighted entries.'}
-            </p>
-          </article>
-
-          <article className="analysis-card">
-            <span>Food calories</span>
-            <strong>
-              {foodCaloriesDashboard.latest
-                ? `${foodCaloriesDashboard.latest.total} kcal`
-                : '—'}
-            </strong>
-            <p>
-              {foodCaloriesDashboard.latest
-                ? `Latest logged intake: ${formatDateFull(foodCaloriesDashboard.latest.date)}. Recent average: ${
-                    foodCaloriesDashboard.recentAverage ?? '—'
-                  } kcal. Highest logged day: ${
-                    foodCaloriesDashboard.highest
-                      ? `${foodCaloriesDashboard.highest.total} kcal on ${formatDateFull(foodCaloriesDashboard.highest.date)}`
-                      : '—'
-                  }.`
-                : 'Add food items and kcal to unlock intake trends.'}
             </p>
           </article>
 
