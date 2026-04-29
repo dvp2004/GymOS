@@ -159,6 +159,21 @@ Machine Seated Row: 65lbs, 3, 12`)
     expect(parsed.strengthCalories).toBe('112')
     expect(parsed.cardioCalories).toBe('109')
     expect(parsed.basketballCalories).toBe('1329')
+    expect(parsed.cyclingCalories).toBe('')
+  })
+
+  it('parses cycling calories separately from cardio calories', () => {
+    const parsed = parseRawWorkoutText(`Weight: - kgs
+  Calories Burnt:
+  Traditional Strength Training: 112 kcal
+  Running: 109 kcal
+  Basketball: 1329 kcal
+  Cycling: 240 kcal`)
+
+    expect(parsed.strengthCalories).toBe('112')
+    expect(parsed.cardioCalories).toBe('109')
+    expect(parsed.basketballCalories).toBe('1329')
+    expect(parsed.cyclingCalories).toBe('240')
   })
 })
 
