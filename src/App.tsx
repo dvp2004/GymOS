@@ -1488,6 +1488,20 @@ function App() {
   const cloudMode = Boolean(isSupabaseConfigured && user && !forceLocalMode)
 
   useEffect(() => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo(0, 0)
+
+      const workspace = document.querySelector('.workspace')
+      if (workspace instanceof HTMLElement) {
+        workspace.scrollTop = 0
+      }
+
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
+    })
+  }, [activeTab])
+
+  useEffect(() => {
     const client = supabase
 
     if (!client) {
