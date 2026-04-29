@@ -900,6 +900,7 @@ function createEmptyLog(date = toInputDate(new Date())): DailyLog {
     exercises: [],
     meals: [
       makeMeal('Pre-workout'),
+      makeMeal('Breakfast'),
       makeMeal('Lunch'),
       makeMeal('Dinner'),
       makeMeal('Snack'),
@@ -1466,7 +1467,7 @@ function mapCloudRowsToLogs(rows: DailyLogRow[], exerciseRows: ExerciseRow[], me
       exercises,
       meals: meals.length
         ? meals
-        : [makeMeal('Pre-workout'), makeMeal('Lunch'), makeMeal('Dinner'), makeMeal('Snack')],
+        : [makeMeal('Pre-workout'), makeMeal('Breakfast'), makeMeal('Lunch'), makeMeal('Dinner'), makeMeal('Snack')],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }
@@ -2423,7 +2424,8 @@ function TodayView({
           <p>Food intake</p>
           <strong>{foodCalories ? `${foodCalories}` : '—'}</strong>
           <span>
-            Pre {getMealCalories(getMealByLabel(draft, 'Pre-workout') ?? makeMeal('Pre-workout')) || '—'} · Lunch{' '}
+            Pre {getMealCalories(getMealByLabel(draft, 'Pre-workout') ?? makeMeal('Pre-workout')) || '—'} · Breakfast{' '}
+            {getMealCalories(getMealByLabel(draft, 'Breakfast') ?? makeMeal('Breakfast')) || '—'} · Lunch{' '}
             {getMealCalories(getMealByLabel(draft, 'Lunch') ?? makeMeal('Lunch')) || '—'} · Dinner{' '}
             {getMealCalories(getMealByLabel(draft, 'Dinner') ?? makeMeal('Dinner')) || '—'}
           </span>
