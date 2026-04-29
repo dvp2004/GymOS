@@ -145,5 +145,20 @@ Machine Seated Row: 65lbs, 3, 12`)
     expect(parsed.treadmillMinutes).toBe('12:00')
     expect(parsed.treadmillIncline).toBe('level 4')
   })
+
+  it('parses calories burned section', () => {
+    const parsed = parseRawWorkoutText(`Weight: - kgs
+  Treadmill:
+  B. 0.75km, 10:00, incline=6.0
+  Squats: 0lbs, 3, 12
+  Calories Burnt:
+  Traditional Strength Training: 112 kcal
+  Running: 109 kcal
+  Basketball: 1329 kcal`)
+
+    expect(parsed.strengthCalories).toBe('112')
+    expect(parsed.cardioCalories).toBe('109')
+    expect(parsed.basketballCalories).toBe('1329')
+  })
 })
 

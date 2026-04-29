@@ -55,6 +55,9 @@ type DailyLog = {
   treadmillDistanceKm: string
   treadmillMinutes: string
   treadmillIncline: string
+  strengthCalories: string
+  cardioCalories: string
+  basketballCalories: string
   notes: string
   exercises: ExerciseEntry[]
   meals: MealEntry[]
@@ -76,6 +79,9 @@ type DailyLogRow = {
   treadmill_distance_km: number | string | null
   treadmill_minutes: number | string | null
   treadmill_incline: number | string | null
+  strength_calories: string | null
+  cardio_calories: string | null
+  basketball_calories: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -123,12 +129,23 @@ type ParsedWorkoutText = {
   treadmillDistanceKm: string
   treadmillMinutes: string
   treadmillIncline: string
+  strengthCalories: string
+  cardioCalories: string
+  basketballCalories: string
   workoutType: WorkoutType
   exercises: ExerciseEntry[]
   warnings: ParserWarning[]
 }
 
-type TrendMetric = 'weight' | 'waist' | 'cardio-distance' | 'cardio-minutes'
+type TrendMetric =
+  | 'weight'
+  | 'waist'
+  | 'cardio-distance'
+  | 'cardio-minutes'
+  | 'calories-total'
+  | 'calories-strength'
+  | 'calories-cardio'
+  | 'calories-basketball'
 
 type ParserWarningLevel = 'info' | 'warning'
 
@@ -145,6 +162,10 @@ const TREND_METRICS: Array<{ id: TrendMetric; label: string }> = [
   { id: 'waist', label: 'Waist' },
   { id: 'cardio-distance', label: 'Cardio km' },
   { id: 'cardio-minutes', label: 'Cardio min' },
+  { id: 'calories-total', label: 'Total kcal' },
+  { id: 'calories-strength', label: 'Strength kcal' },
+  { id: 'calories-cardio', label: 'Cardio kcal' },
+  { id: 'calories-basketball', label: 'Basketball kcal' },
 ]
 
 const STORAGE_KEY = 'gymos.logs.v1'
@@ -307,6 +328,75 @@ function buildWorkoutCoachComparison(draft: DailyLog, logs: DailyLog[]) {
   }
 }
 
+function parseCaloriesValue(value: string) {
+  const match = value.match(/([-\d.]+)\s*(?:kcal|cal|calories)?/i)
+  const parsed = match?.[1]?.trim()
+
+  if (!parsed || parsed === '-') return ''
+
+  return parsed
+}
+
+function isCaloriesHeading(line: string) {
+  return /^calories\s*(burnt|burned)?\s*:\s*$/i.test(line.trim())
+}
+
+function isCaloriesLine(line: string) {
+  return /kcal|calories|cal\b/i.test(line) && line.includes(':')
+}
+
+function parseCaloriesLine(line: string) {
+  const [rawLabel, rawValue = ''] = line.split(/:(.*)/s)
+  const label = rawLabel.trim().toLowerCase()
+  const calories = parseCaloriesValue(rawValue)
+
+  if (!calories) {
+    return {
+      kind: null as 'strength' | 'cardio' | 'basketball' | null,
+      calories: '',
+    }
+  }
+
+  if (
+    label.includes('traditional strength') ||
+    label.includes('strength training') ||
+    label.includes('weight training') ||
+    label.includes('weights') ||
+    label.includes('gym')
+  ) {
+    return { kind: 'strength' as const, calories }
+  }
+
+  if (
+    label.includes('running') ||
+    label.includes('treadmill') ||
+    label.includes('cardio') ||
+    label.includes('cycling') ||
+    label.includes('bike') ||
+    label.includes('stairmaster') ||
+    label.includes('stairs')
+  ) {
+    return { kind: 'cardio' as const, calories }
+  }
+
+  if (label.includes('basketball')) {
+    return { kind: 'basketball' as const, calories }
+  }
+
+  return {
+    kind: null as 'strength' | 'cardio' | 'basketball' | null,
+    calories,
+  }
+}
+
+function getTotalCaloriesBurned(log: Pick<DailyLog, 'strengthCalories' | 'cardioCalories' | 'basketballCalories'>) {
+  return (
+    (safeNumber(log.strengthCalories) ?? 0) +
+    (safeNumber(log.cardioCalories) ?? 0) +
+    (safeNumber(log.basketballCalories) ?? 0)
+  )
+}
+
 function makeParserWarning(
   level: ParserWarningLevel,
   message: string,
@@ -446,6 +536,10 @@ function buildTrendSeries(logs: DailyLog[], metric: TrendMetric) {
       if (metric === 'waist') value = safeNumber(log.waistSizeCm)
       if (metric === 'cardio-distance') value = safeNumber(log.treadmillDistanceKm)
       if (metric === 'cardio-minutes') value = parseDurationToMinutes(log.treadmillMinutes)
+      if (metric === 'calories-total') value = getTotalCaloriesBurned(log) || null
+      if (metric === 'calories-strength') value = safeNumber(log.strengthCalories)
+      if (metric === 'calories-cardio') value = safeNumber(log.cardioCalories)
+      if (metric === 'calories-basketball') value = safeNumber(log.basketballCalories)
 
       return { date: log.date, value }
     })
@@ -608,6 +702,9 @@ function createEmptyLog(date = toInputDate(new Date())): DailyLog {
     treadmillDistanceKm: '',
     treadmillMinutes: '',
     treadmillIncline: '6.0',
+    strengthCalories: '',
+    cardioCalories: '',
+    basketballCalories: '',
     notes: '',
     exercises: [],
     meals: [
@@ -815,6 +912,9 @@ function parseRawWorkoutText(raw: string): ParsedWorkoutText {
   let treadmillDistanceKm = ''
   let treadmillMinutes = ''
   let treadmillIncline = ''
+  let strengthCalories = ''
+  let cardioCalories = ''
+  let basketballCalories = ''
   const exercises: ExerciseEntry[] = []
   const warnings: ParserWarning[] = []
 
@@ -832,6 +932,40 @@ function parseRawWorkoutText(raw: string): ParsedWorkoutText {
           ),
         )
       }
+
+      continue
+    }
+
+    if (isCaloriesHeading(line)) {
+      continue
+    }
+
+    if (isCaloriesLine(line)) {
+      const parsedCalories = parseCaloriesLine(line)
+
+      if (parsedCalories.kind === 'strength') {
+        strengthCalories = parsedCalories.calories
+        continue
+      }
+
+      if (parsedCalories.kind === 'cardio') {
+        cardioCalories = parsedCalories.calories
+        continue
+      }
+
+      if (parsedCalories.kind === 'basketball') {
+        basketballCalories = parsedCalories.calories
+        continue
+      }
+
+      warnings.push(
+        makeParserWarning(
+          'info',
+          'Calories line detected but activity type was not recognised.',
+          line,
+          'Use labels like Traditional Strength Training, Running, Treadmill, Cycling, Stairmaster, or Basketball.',
+        ),
+      )
 
       continue
     }
@@ -900,6 +1034,9 @@ function parseRawWorkoutText(raw: string): ParsedWorkoutText {
     treadmillDistanceKm,
     treadmillMinutes,
     treadmillIncline,
+    strengthCalories,
+    cardioCalories,
+    basketballCalories,
     workoutType,
     exercises,
     warnings,
@@ -1037,6 +1174,9 @@ function buildDailyLogPayload(log: DailyLog, userId: string, includeWaistSize: b
     treadmill_distance_km: toNullableNumber(log.treadmillDistanceKm),
     treadmill_minutes: parseDurationToMinutes(log.treadmillMinutes),
     treadmill_incline: toNullableNumber(log.treadmillIncline),
+    strength_calories: emptyToNull(log.strengthCalories),
+    cardio_calories: emptyToNull(log.cardioCalories),
+    basketball_calories: emptyToNull(log.basketballCalories),
     notes: emptyToNull(log.notes),
     updated_at: new Date().toISOString(),
   }
@@ -1087,6 +1227,9 @@ function mapCloudRowsToLogs(dailyRows: DailyLogRow[], exerciseRows: ExerciseRow[
       treadmillDistanceKm: row.treadmill_distance_km === null ? '' : String(row.treadmill_distance_km),
       treadmillMinutes: row.treadmill_minutes === null ? '' : String(row.treadmill_minutes),
       treadmillIncline: row.treadmill_incline === null ? '' : String(row.treadmill_incline),
+      strengthCalories: row.strength_calories ?? '',
+      cardioCalories: row.cardio_calories ?? '',
+      basketballCalories: row.basketball_calories ?? '',
       notes: row.notes ?? '',
       exercises,
       meals,
@@ -1290,6 +1433,9 @@ function normaliseImportedLog(item: unknown): DailyLog {
     treadmillDistanceKm: typeof source.treadmillDistanceKm === 'string' ? source.treadmillDistanceKm : source.treadmillDistanceKm == null ? '' : String(source.treadmillDistanceKm),
     treadmillMinutes: typeof source.treadmillMinutes === 'string' ? source.treadmillMinutes : source.treadmillMinutes == null ? '' : String(source.treadmillMinutes),
     treadmillIncline: typeof source.treadmillIncline === 'string' ? source.treadmillIncline : source.treadmillIncline == null ? '' : String(source.treadmillIncline),
+    strengthCalories: typeof source.strengthCalories === 'string' ? source.strengthCalories : source.strengthCalories == null ? '' : String(source.strengthCalories),
+    cardioCalories: typeof source.cardioCalories === 'string' ? source.cardioCalories : source.cardioCalories == null ? '' : String(source.cardioCalories),
+    basketballCalories: typeof source.basketballCalories === 'string' ? source.basketballCalories : source.basketballCalories == null ? '' : String(source.basketballCalories),
     notes: typeof source.notes === 'string' ? source.notes : '',
     exercises,
     meals,
@@ -1915,6 +2061,7 @@ function TodayView({
   const coverage = useMemo(() => buildDataCoverage(logs), [logs])
   const bodyStatus = draft.weightKg ? `${draft.weightKg} kg` : stats.latestWeightLabel
   const workoutSummary = draft.exercises.length ? `${draft.exercises.length} exercises · ${draft.treadmillDistanceKm || '—'} km treadmill` : 'No workout details saved yet'
+  const totalCalories = getTotalCaloriesBurned(draft)
   const plannedWorkout = hasWorkoutData(draft) ? draft.workoutType === 'Custom' ? getDefaultWorkoutTypeForDate(draft.date) : draft.workoutType : getDefaultWorkoutTypeForDate(draft.date)
 
   return (
@@ -2003,16 +2150,28 @@ function TodayView({
           <span>{stats.weightDeltaText}</span>
           <MiniSparkline points={sparkline} />
         </article>
+
         <article className="metric-card">
           <p>Today’s workout</p>
           <strong>{plannedWorkout}</strong>
           <span>{workoutSummary}</span>
         </article>
+
+        <article className="metric-card">
+          <p>Calories burned</p>
+          <strong>{totalCalories ? `${totalCalories}` : '—'}</strong>
+          <span>
+            Strength {draft.strengthCalories || '—'} · Cardio {draft.cardioCalories || '—'} · Basketball{' '}
+            {draft.basketballCalories || '—'}
+          </span>
+        </article>
+
         <article className="metric-card">
           <p>Cardio last 7</p>
           <strong>{stats.cardioMinutesLast7} min</strong>
           <span>{stats.cardioDistanceLast7Label} logged distance</span>
         </article>
+
         <article className="metric-card">
           <p>Data quality</p>
           <strong>{coverage.weightLogged}/{coverage.total}</strong>
@@ -2166,6 +2325,9 @@ function WorkoutView({
     updateDraft('treadmillDistanceKm', parsed.treadmillDistanceKm)
     updateDraft('treadmillMinutes', parsed.treadmillMinutes)
     updateDraft('treadmillIncline', parsed.treadmillIncline || draft.treadmillIncline)
+    if (parsed.strengthCalories) updateDraft('strengthCalories', parsed.strengthCalories)
+    if (parsed.cardioCalories) updateDraft('cardioCalories', parsed.cardioCalories)
+    if (parsed.basketballCalories) updateDraft('basketballCalories', parsed.basketballCalories)
     updateDraft('exercises', parsed.exercises)
     updateDraft('notes', buildNotesWithRawWorkout(draft.notes, rawWorkoutText))
 
@@ -2258,6 +2420,16 @@ Plank: , 3, 30 seconds`}
               <article>
                 <span>Incline</span>
                 <strong>{parsedPreview.treadmillIncline || '—'}</strong>
+              </article>
+              <article>
+                <span>Calories</span>
+                <strong>
+                  {Number(
+                    (safeNumber(parsedPreview.strengthCalories) ?? 0) +
+                      (safeNumber(parsedPreview.cardioCalories) ?? 0) +
+                      (safeNumber(parsedPreview.basketballCalories) ?? 0),
+                  ) || '—'} kcal
+                </strong>
               </article>
               <article>
                 <span>Warnings</span>
@@ -2431,6 +2603,49 @@ Plank: , 3, 30 seconds`}
           </label>
         </div>
       </section>
+
+      <section className="panel span-2 form-panel">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Apple Watch / activity</p>
+            <h3>Calories burned</h3>
+          </div>
+          <span className="status-pill">
+            {getTotalCaloriesBurned(draft) ? `${getTotalCaloriesBurned(draft)} kcal` : 'Optional'}
+          </span>
+        </div>
+
+        <div className="form-grid">
+          <label>
+            Strength kcal
+            <input
+              inputMode="decimal"
+              placeholder="112"
+              value={draft.strengthCalories}
+              onChange={(event) => updateDraft('strengthCalories', event.target.value)}
+            />
+          </label>
+          <label>
+            Cardio kcal
+            <input
+              inputMode="decimal"
+              placeholder="109"
+              value={draft.cardioCalories}
+              onChange={(event) => updateDraft('cardioCalories', event.target.value)}
+            />
+          </label>
+          <label>
+            Basketball kcal
+            <input
+              inputMode="decimal"
+              placeholder="1329"
+              value={draft.basketballCalories}
+              onChange={(event) => updateDraft('basketballCalories', event.target.value)}
+            />
+          </label>
+        </div>
+      </section>
+
     </div>
   )
 }
@@ -2563,6 +2778,7 @@ function TrendsView({
   const [importMessage, setImportMessage] = useState('')
   const latestWaist = sorted.find((log) => log.waistSizeCm)?.waistSizeCm ?? ''
   const exerciseDashboard = useMemo(() => buildExerciseDashboard(logs), [logs])
+  const caloriesDashboard = useMemo(() => buildCaloriesDashboard(logs), [logs])
   const splitCounts = useMemo(() => buildSplitCounts(logs), [logs])
   const cardioStats = useMemo(() => buildCardioDashboard(logs), [logs])
   const heatmap = useMemo(() => buildConsistencyHeatmap(logs), [logs])
@@ -2584,7 +2800,9 @@ function TrendsView({
         ? ' cm'
         : selectedTrendMetric === 'cardio-distance'
           ? ' km'
-          : ' min'
+          : selectedTrendMetric === 'cardio-minutes'
+            ? ' min'
+            : ' kcal'
 
   async function handleImport() {
     try {
@@ -2830,22 +3048,44 @@ function TrendsView({
               Upper {splitCounts.Upper} · Lower {splitCounts.Lower} · Mix {splitCounts.Mix} · Cardio {splitCounts.Cardio} · Rest {splitCounts.Rest}
             </p>
           </article>
+
           <article className="analysis-card">
             <span>Cardio best</span>
             <strong>{cardioStats.bestDistanceLabel}</strong>
             <p>Longest duration: {cardioStats.bestDurationLabel}; latest logged: {cardioStats.latestLabel}</p>
           </article>
+
+          <article className="analysis-card">
+            <span>Calories burned</span>
+            <strong>
+              {caloriesDashboard.best
+                ? `${caloriesDashboard.best.total} kcal`
+                : '—'}
+            </strong>
+            <p>
+              {caloriesDashboard.best
+                ? `Best logged burn on ${formatDateShort(caloriesDashboard.best.date)}. Recent average: ${
+                    caloriesDashboard.recentAverage ?? '—'
+                  } kcal across logged calorie days.`
+                : 'Add Apple Watch calories to unlock burn comparisons.'}
+            </p>
+          </article>
+
           <article className="analysis-card">
             <span>Volume leaders</span>
             <strong>{exerciseDashboard.volumeLeaders[0]?.name ?? '—'}</strong>
-            <p>{exerciseDashboard.volumeLeaders.slice(0, 4).map((item) => `${item.name} ${item.volumeLabel}`).join(' · ') || 'Need more weighted entries.'}</p>
+            <p>
+              {exerciseDashboard.volumeLeaders
+                .slice(0, 4)
+                .map((item) => `${item.name} ${item.volumeLabel}`)
+                .join(' · ') || 'Need more weighted entries.'}
+            </p>
           </article>
+
           <article className="analysis-card">
             <span>Nutrition signal</span>
             <strong>{nutritionTags.taggedMeals}/{nutritionTags.totalMeals}</strong>
-            <p>
-              {nutritionTags.summary}
-            </p>
+            <p>{nutritionTags.summary}</p>
           </article>
         </div>
       </section>
@@ -3162,6 +3402,34 @@ function buildNutritionTagDashboard(logs: DailyLog[]) {
     summary: topTags.length
       ? topTags.map((tag) => `${tag.label} ${tag.count}`).join(' · ')
       : 'No nutrition tags yet.',
+  }
+}
+
+function buildCaloriesDashboard(logs: DailyLog[]) {
+  const logsWithCalories = sortLogs(logs).filter((log) => getTotalCaloriesBurned(log) > 0)
+
+  const totals = logsWithCalories.map((log) => ({
+    date: log.date,
+    total: getTotalCaloriesBurned(log),
+    strength: safeNumber(log.strengthCalories) ?? 0,
+    cardio: safeNumber(log.cardioCalories) ?? 0,
+    basketball: safeNumber(log.basketballCalories) ?? 0,
+    workoutType: log.workoutType,
+  }))
+
+  const best = totals.reduce<typeof totals[number] | null>((winner, item) => {
+    if (!winner) return item
+    return item.total > winner.total ? item : winner
+  }, null)
+
+  const recent = totals.slice(0, 7)
+  const recentAverage = recent.length ? Math.round(average(recent.map((item) => item.total)) ?? 0) : null
+
+  return {
+    loggedDays: totals.length,
+    best,
+    recentAverage,
+    totalAllTime: totals.reduce((sum, item) => sum + item.total, 0),
   }
 }
 
@@ -3783,6 +4051,10 @@ function buildCoachPrompt(draft: DailyLog, logs: DailyLog[], question: string) {
     workoutType: log.workoutType,
     treadmillDistanceKm: log.treadmillDistanceKm || null,
     treadmillMinutes: log.treadmillMinutes || null,
+    strengthCalories: log.strengthCalories || null,
+    cardioCalories: log.cardioCalories || null,
+    basketballCalories: log.basketballCalories || null,
+    totalCalories: getTotalCaloriesBurned(log) || null,
     exerciseCount: log.exercises.length,
     exercises: log.exercises.map((exercise) => ({
       name: exercise.name,
@@ -3807,6 +4079,7 @@ Workout comparison:
 ${JSON.stringify(workoutComparison, null, 2)}
 
 Recent trend summary:
+- Today calories burned: strength ${draft.strengthCalories || '—'} kcal, cardio ${draft.cardioCalories || '—'} kcal, basketball ${draft.basketballCalories || '—'} kcal, total ${getTotalCaloriesBurned(draft) || '—'} kcal
 - 7-day average weight: ${formatKg(stats.sevenDayAverage)}
 - 14-day average weight: ${formatKg(stats.fourteenDayAverage)}
 - Training days in recent 7 logs: ${stats.trainingDaysLast7}/7
