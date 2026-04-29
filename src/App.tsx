@@ -2371,22 +2371,20 @@ function WorkoutView({
 
         <textarea
           className="raw-workout-box"
-          placeholder={
-            `Weight: 92 kgs
-            Treadmill: 0.42km, 05:00, incline=6.0
-            Squats: 0lbs, 3, 12
-            Reverse Lunge: 0lbs, 3, 12
-            Dumbbell Romanian Deadlift: 5lbs, 3, 12
-            Leg extension (Quadriceps): 30lbs, 3, 12
-            Leg curl (Glutes & Hamstrings): 20lbs, 3, 12
-            Standing calf raise: 5lbs, 3, 12
-            Plank: , 3, 35 seconds
-            Crunches: , 3, 12
-            Calories Burnt:
-            Traditional Strength Training: 112 kcal
-            Running: 109 kcal
-            Basketball: 1329 kcal`
-          }
+          placeholder={`Weight: 92 kgs
+Treadmill: 0.42km, 05:00, incline=6.0
+Squats: 0lbs, 3, 12
+Reverse Lunge: 0lbs, 3, 12
+Dumbbell Romanian Deadlift: 5lbs, 3, 12
+Leg extension (Quadriceps): 30lbs, 3, 12
+Leg curl (Glutes & Hamstrings): 20lbs, 3, 12
+Standing calf raise: 5lbs, 3, 12
+Plank: , 3, 35 seconds
+Crunches: , 3, 12
+Calories Burnt:
+Traditional Strength Training: 112 kcal
+Running: 109 kcal
+Basketball: 1329 kcal`}
           value={rawWorkoutText}
           onChange={(event) => {
             setRawWorkoutText(event.target.value)
