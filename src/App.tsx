@@ -163,6 +163,63 @@ type ParserWarning = {
   suggestion?: string
 }
 
+type AwardCategory = 'strength' | 'cardio' | 'basketball' | 'cycling'
+
+type AwardEntry = {
+  date: string
+  value: number
+  workoutType: WorkoutType
+}
+
+type AwardCard = {
+  id: AwardCategory
+  title: string
+  subtitle: string
+  unit: string
+  best: AwardEntry | null
+  topThree: AwardEntry[]
+}
+
+function AwardCategoryIcon({ category }: { category: AwardCategory }) {
+  if (category === 'strength') {
+    return (
+      <span className="award-icon strength" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 10h2V8h2v8H5v-2H3v-4Zm4-1h10v6H7V9Zm10-1h2v2h2v4h-2v2h-2V8Z" />
+        </svg>
+      </span>
+    )
+  }
+
+  if (category === 'cardio') {
+    return (
+      <span className="award-icon cardio" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M13.5 3 8 13h4l-1.5 8L16 11h-4.2L13.5 3Z" />
+        </svg>
+      </span>
+    )
+  }
+
+  if (category === 'basketball') {
+    return (
+      <span className="award-icon basketball" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Zm-1 1.1A8.96 8.96 0 0 0 4.1 11H11V3.1Zm2 0V11h6.9A8.96 8.96 0 0 0 13 3.1ZM4.1 13A8.96 8.96 0 0 0 11 20.9V13H4.1Zm8.9 7.9A8.96 8.96 0 0 0 19.9 13H13v7.9Z" />
+        </svg>
+      </span>
+    )
+  }
+
+  return (
+    <span className="award-icon cycling" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M7 17.5a3.5 3.5 0 1 1-3.24-3.49A3.5 3.5 0 0 1 7 17.5Zm13.5 0a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0ZM10 6h3l1.2 2.4h2.3a1 1 0 1 1 0 2h-3a1 1 0 0 1-.9-.56L11.8 8H10a1 1 0 1 1 0-2Zm1 11.5 2.4-5H9.8l1.2 2.4a1 1 0 0 1-1.8.9L7.1 11.5H6a1 1 0 1 1 0-2h1.7a1 1 0 0 1 .9.56l.8 1.54H14a1 1 0 0 1 .92 1.39l-2.08 4.51A1 1 0 1 1 11 17.5Z" />
+      </svg>
+    </span>
+  )
+}
+
 const TREND_RANGES: Array<{ id: TrendRange; label: string; days: number | null }> = [
   { id: '1m', label: '1M', days: 30 },
   { id: '3m', label: '3M', days: 90 },
@@ -2901,6 +2958,9 @@ function TrendsView({
     [logs, selectedTrendMetric, selectedTrendRange],
   )
   const trendSummary = useMemo(() => getTrendSummary(trendSeries), [trendSeries])
+  const awardsDashboard = useMemo(() => buildAwardsDashboard(logs), [logs])
+  const [selectedAwardCategory, setSelectedAwardCategory] = useState<AwardCategory>('strength')
+  const selectedAward = awardsDashboard.find((award) => award.id === selectedAwardCategory) ?? awardsDashboard[0] ?? null
   const trendSuffix =
     selectedTrendMetric === 'weight'
       ? ' kg'
@@ -3213,6 +3273,78 @@ function TrendsView({
             <p>{nutritionTags.summary}</p>
           </article>
         </div>
+      </section>
+
+      <section className="panel span-2">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Awards cabinet</p>
+            <h3>Best achievements of all time</h3>
+          </div>
+          <span className="status-pill">
+            {awardsDashboard.filter((award) => award.best).length}/4 tracked
+          </span>
+        </div>
+
+        <div className="awards-grid">
+          {awardsDashboard.map((award) => (
+            <button
+              key={award.id}
+              type="button"
+              className={selectedAwardCategory === award.id ? 'award-card active' : 'award-card'}
+              onClick={() => setSelectedAwardCategory(award.id)}
+            >
+              <div className="award-card-top">
+                <AwardCategoryIcon category={award.id} />
+                <div>
+                  <span className="award-card-label">{award.title}</span>
+                  <strong>
+                    {award.best ? `${award.best.value} ${award.unit}` : '—'}
+                  </strong>
+                </div>
+              </div>
+
+              <p className="award-card-subtitle">{award.subtitle}</p>
+
+              <span className="award-card-date">
+                {award.best ? formatDateFull(award.best.date) : 'No data logged yet'}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {selectedAward && (
+          <div className="award-detail-panel">
+            <div className="award-detail-header">
+              <div className="award-detail-title">
+                <AwardCategoryIcon category={selectedAward.id} />
+                <div>
+                  <p className="eyebrow">Top 3</p>
+                  <h4>{selectedAward.title} personal bests</h4>
+                </div>
+              </div>
+
+              <span className="status-pill">
+                {selectedAward.best ? `${selectedAward.best.value} ${selectedAward.unit}` : 'No data'}
+              </span>
+            </div>
+
+            {selectedAward.topThree.length > 0 ? (
+              <div className="award-top-three">
+                {selectedAward.topThree.map((entry, index) => (
+                  <article className="award-rank-card" key={`${selectedAward.id}-${entry.date}-${entry.value}-${index}`}>
+                    <span className="award-rank-badge">#{index + 1}</span>
+                    <strong>{entry.value} kcal</strong>
+                    <p>{formatDateFull(entry.date)}</p>
+                    <span>{selectedAward.title}</span>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">No achievements logged yet for this category.</div>
+            )}
+          </div>
+        )}
       </section>
 
       <section className="panel span-2 form-panel">
@@ -3577,6 +3709,65 @@ function buildCaloriesDashboard(logs: DailyLog[]) {
     recentAverage,
     totalAllTime: totals.reduce((sum, item) => sum + item.total, 0),
   }
+}
+
+function getAwardCategoryValue(log: DailyLog, category: AwardCategory) {
+  if (category === 'strength') return safeNumber(log.strengthCalories) ?? 0
+  if (category === 'cardio') return safeNumber(log.cardioCalories) ?? 0
+  if (category === 'basketball') return safeNumber(log.basketballCalories) ?? 0
+  return safeNumber(log.cyclingCalories) ?? 0
+}
+
+function buildAwardsDashboard(logs: DailyLog[]): AwardCard[] {
+  const categories: Array<{
+    id: AwardCategory
+    title: string
+    subtitle: string
+  }> = [
+    {
+      id: 'strength',
+      title: 'Strength',
+      subtitle: 'Best traditional strength session',
+    },
+    {
+      id: 'cardio',
+      title: 'Running / Cardio',
+      subtitle: 'Best treadmill / running / cardio burn',
+    },
+    {
+      id: 'basketball',
+      title: 'Basketball',
+      subtitle: 'Best basketball calorie burn',
+    },
+    {
+      id: 'cycling',
+      title: 'Cycling',
+      subtitle: 'Best cycling calorie burn',
+    },
+  ]
+
+  return categories.map((category) => {
+    const entries: AwardEntry[] = sortLogs(logs)
+      .map((log) => ({
+        date: log.date,
+        value: getAwardCategoryValue(log, category.id),
+        workoutType: log.workoutType,
+      }))
+      .filter((entry) => entry.value > 0)
+      .sort((a, b) => {
+        if (b.value !== a.value) return b.value - a.value
+        return a.date.localeCompare(b.date)
+      })
+
+    return {
+      id: category.id,
+      title: category.title,
+      subtitle: category.subtitle,
+      unit: 'kcal',
+      best: entries[0] ?? null,
+      topThree: entries.slice(0, 3),
+    }
+  })
 }
 
 function buildExerciseHistory(logs: DailyLog[], currentDate: string) {
