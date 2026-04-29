@@ -550,6 +550,14 @@ function getDefaultWorkoutTypeForDate(date: string): WorkoutType {
   return 'Rest'
 }
 
+function formatDateFull(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
 function buildTrendSeries(logs: DailyLog[], metric: TrendMetric, range: TrendRange) {
   const sorted = [...logs].sort((a, b) => a.date.localeCompare(b.date))
 
@@ -601,7 +609,7 @@ function getTrendSummary(series: Array<{ date: string; value: number }>) {
       latest: series[0].value,
       average: series[0].value,
       delta: null,
-      label: `Only one point: ${formatDateShort(series[0].date)}`,
+      label: `Only one point: ${formatDateFull(series[0].date)}`,
     }
   }
 
@@ -614,7 +622,7 @@ function getTrendSummary(series: Array<{ date: string; value: number }>) {
     latest: latest.value,
     average: avg,
     delta,
-    label: `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} from ${formatDateShort(first.date)} to ${formatDateShort(latest.date)}`,
+    label: `${delta >= 0 ? '+' : ''}${delta.toFixed(1)} from ${formatDateFull(first.date)} to ${formatDateFull(latest.date)}`,
   }
 }
 
@@ -716,18 +724,18 @@ function TrendLineChart({
               {activePoint.value.toFixed(1)}
               {suffix}
             </strong>
-            <span>{formatDateShort(activePoint.date)}</span>
+            <span>{formatDateFull(activePoint.date)}</span>
           </div>
         )}
       </div>
 
       <div className="trend-chart-caption">
-        <span>{formatDateShort(series[0].date)}</span>
+        <span>{formatDateFull(series[0].date)}</span>
         <strong>
           Latest point {series[series.length - 1].value.toFixed(1)}
           {suffix}
         </strong>
-        <span>{formatDateShort(series[series.length - 1].date)}</span>
+        <span>{formatDateFull(series[series.length - 1].date)}</span>
       </div>
     </div>
   )
@@ -3179,7 +3187,7 @@ function TrendsView({
             </strong>
             <p>
               {caloriesDashboard.best
-                ? `Best logged burn on ${formatDateShort(caloriesDashboard.best.date)}. Recent average: ${
+                ? `Best logged burn on ${formatDateFull(caloriesDashboard.best.date)}. Recent average: ${
                     caloriesDashboard.recentAverage ?? '—'
                   } kcal across logged calorie days. Cycling best: ${
                     caloriesDashboard.bestByCategory.cycling?.cycling || '—'
