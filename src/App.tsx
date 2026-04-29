@@ -232,6 +232,7 @@ const MEAL_TAGS: Array<{ id: MealTag; label: string }> = [
 ]
 
 const MEAL_TAG_IDS = new Set<MealTag>(MEAL_TAGS.map((tag) => tag.id))
+const DEFAULT_MEAL_ORDER: MealEntry['label'][] = ['Pre-workout', 'Breakfast', 'Lunch', 'Snack', 'Dinner']
 
 const LOWER_EXERCISE_CANONICALS = new Set([
   'squat',
@@ -326,6 +327,13 @@ function MotivationCard({ date }: { date: string }) {
 
 function getMealByLabel(log: DailyLog, label: MealEntry['label']) {
   return log.meals.find((meal) => meal.label === label)
+}
+
+function getDisplayMeals(log: DailyLog) {
+  const orderedMeals = DEFAULT_MEAL_ORDER.map((label) => getMealByLabel(log, label) ?? makeMeal(label))
+  const extraMeals = log.meals.filter((meal) => !DEFAULT_MEAL_ORDER.includes(meal.label))
+
+  return [...orderedMeals, ...extraMeals]
 }
 
 function makeId() {
@@ -3055,8 +3063,8 @@ function NutritionView({
         </div>
 
         <div className="meal-calorie-breakdown">
-          {draft.meals.map((meal) => (
-            <article key={meal.id}>
+          {getDisplayMeals(draft).map((meal) => (
+            <article key={`${meal.label}-${meal.id}`}>
               <span>{meal.label === 'Snack' ? 'Snacks' : meal.label}</span>
               <strong>{getMealCalories(meal) || '—'} kcal</strong>
             </article>
@@ -3094,7 +3102,6 @@ function TrendsView({
     () => buildDataCoverage(logs, heatmap.days.map((day) => day.date)),
     [logs, heatmap],
   )
-  const nutritionTags = useMemo(() => buildNutritionTagDashboard(logs), [logs])
   const exerciseDeepDive = useMemo(() => buildExerciseDeepDive(logs), [logs])
   const [selectedExercise, setSelectedExercise] = useState('')
   const selectedExerciseInsight = exerciseDeepDive.find((exercise) => exercise.canonicalName === selectedExercise) ?? exerciseDeepDive[0] ?? null
@@ -3415,9 +3422,23 @@ function TrendsView({
           </article>
 
           <article className="analysis-card">
-            <span>Nutrition signal</span>
-            <strong>{nutritionTags.taggedMeals}/{nutritionTags.totalMeals}</strong>
-            <p>{nutritionTags.summary}</p>
+            <span>Food calories</span>
+            <strong>
+              {foodCaloriesDashboard.latest
+                ? `${foodCaloriesDashboard.latest.total} kcal`
+                : '—'}
+            </strong>
+            <p>
+              {foodCaloriesDashboard.latest
+                ? `Latest logged intake: ${formatDateFull(foodCaloriesDashboard.latest.date)}. Recent average: ${
+                    foodCaloriesDashboard.recentAverage ?? '—'
+                  } kcal. Highest logged day: ${
+                    foodCaloriesDashboard.highest
+                      ? `${foodCaloriesDashboard.highest.total} kcal on ${formatDateFull(foodCaloriesDashboard.highest.date)}`
+                      : '—'
+                  }.`
+                : 'Add food items and kcal to unlock intake trends.'}
+            </p>
           </article>
 
           <article className="analysis-card">
