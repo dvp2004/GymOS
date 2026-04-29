@@ -23,6 +23,12 @@ type ExerciseEntry = {
   completedSets: number
 }
 
+type FoodItem = {
+  id: string
+  name: string
+  calories: string
+}
+
 type MealTag =
   | 'high-protein'
   | 'low-protein'
@@ -40,6 +46,7 @@ type MealEntry = {
   description: string
   proteinScore: 0 | 1 | 2 | 3
   tags: MealTag[]
+  items: FoodItem[]
 }
 
 type DailyLog = {
@@ -108,6 +115,7 @@ type MealRow = {
   description: string | null
   protein_score: number | null
   tags: string[] | null
+  food_items: FoodItem[] | null
   position: number
 }
 
@@ -150,6 +158,7 @@ type TrendMetric =
   | 'calories-cardio'
   | 'calories-basketball'
   | 'calories-cycling'
+  | 'food-calories'
 
 type TrendRange = '1m' | '3m' | '1y' | 'all'
 
@@ -180,46 +189,6 @@ type AwardCard = {
   topThree: AwardEntry[]
 }
 
-function AwardCategoryIcon({ category }: { category: AwardCategory }) {
-  if (category === 'strength') {
-    return (
-      <span className="award-icon strength" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M3 10h2V8h2v8H5v-2H3v-4Zm4-1h10v6H7V9Zm10-1h2v2h2v4h-2v2h-2V8Z" />
-        </svg>
-      </span>
-    )
-  }
-
-  if (category === 'cardio') {
-    return (
-      <span className="award-icon cardio" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M13.5 3 8 13h4l-1.5 8L16 11h-4.2L13.5 3Z" />
-        </svg>
-      </span>
-    )
-  }
-
-  if (category === 'basketball') {
-    return (
-      <span className="award-icon basketball" aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Zm-1 1.1A8.96 8.96 0 0 0 4.1 11H11V3.1Zm2 0V11h6.9A8.96 8.96 0 0 0 13 3.1ZM4.1 13A8.96 8.96 0 0 0 11 20.9V13H4.1Zm8.9 7.9A8.96 8.96 0 0 0 19.9 13H13v7.9Z" />
-        </svg>
-      </span>
-    )
-  }
-
-  return (
-    <span className="award-icon cycling" aria-hidden="true">
-      <svg viewBox="0 0 24 24">
-        <path d="M7 17.5a3.5 3.5 0 1 1-3.24-3.49A3.5 3.5 0 0 1 7 17.5Zm13.5 0a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0ZM10 6h3l1.2 2.4h2.3a1 1 0 1 1 0 2h-3a1 1 0 0 1-.9-.56L11.8 8H10a1 1 0 1 1 0-2Zm1 11.5 2.4-5H9.8l1.2 2.4a1 1 0 0 1-1.8.9L7.1 11.5H6a1 1 0 1 1 0-2h1.7a1 1 0 0 1 .9.56l.8 1.54H14a1 1 0 0 1 .92 1.39l-2.08 4.51A1 1 0 1 1 11 17.5Z" />
-      </svg>
-    </span>
-  )
-}
-
 const TREND_RANGES: Array<{ id: TrendRange; label: string; days: number | null }> = [
   { id: '1m', label: '1M', days: 30 },
   { id: '3m', label: '3M', days: 90 },
@@ -232,7 +201,8 @@ const TREND_METRICS: Array<{ id: TrendMetric; label: string }> = [
   { id: 'waist', label: 'Waist' },
   { id: 'cardio-distance', label: 'Cardio km' },
   { id: 'cardio-minutes', label: 'Cardio min' },
-  { id: 'calories-total', label: 'Total kcal' },
+  { id: 'calories-total', label: 'Burned kcal' },
+  { id: 'food-calories', label: 'Eaten kcal' },
   { id: 'calories-strength', label: 'Strength kcal' },
   { id: 'calories-cardio', label: 'Running kcal' },
   { id: 'calories-basketball', label: 'Basketball kcal' },
@@ -297,6 +267,46 @@ const GYM_QUOTES = [
   'Consistency is the compound interest of training.',
 ]
 
+function AwardCategoryIcon({ category }: { category: AwardCategory }) {
+  if (category === 'strength') {
+    return (
+      <span className="award-icon strength" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 10h2V8h2v8H5v-2H3v-4Zm4-1h10v6H7V9Zm10-1h2v2h2v4h-2v2h-2V8Z" />
+        </svg>
+      </span>
+    )
+  }
+
+  if (category === 'cardio') {
+    return (
+      <span className="award-icon cardio" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M13.5 3 8 13h4l-1.5 8L16 11h-4.2L13.5 3Z" />
+        </svg>
+      </span>
+    )
+  }
+
+  if (category === 'basketball') {
+    return (
+      <span className="award-icon basketball" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2Zm-1 1.1A8.96 8.96 0 0 0 4.1 11H11V3.1Zm2 0V11h6.9A8.96 8.96 0 0 0 13 3.1ZM4.1 13A8.96 8.96 0 0 0 11 20.9V13H4.1Zm8.9 7.9A8.96 8.96 0 0 0 19.9 13H13v7.9Z" />
+        </svg>
+      </span>
+    )
+  }
+
+  return (
+    <span className="award-icon cycling" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M7 17.5a3.5 3.5 0 1 1-3.24-3.49A3.5 3.5 0 0 1 7 17.5Zm13.5 0a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0ZM10 6h3l1.2 2.4h2.3a1 1 0 1 1 0 2h-3a1 1 0 0 1-.9-.56L11.8 8H10a1 1 0 1 1 0-2Zm1 11.5 2.4-5H9.8l1.2 2.4a1 1 0 0 1-1.8.9L7.1 11.5H6a1 1 0 1 1 0-2h1.7a1 1 0 0 1 .9.56l.8 1.54H14a1 1 0 0 1 .92 1.39l-2.08 4.51A1 1 0 1 1 11 17.5Z" />
+      </svg>
+    </span>
+  )
+}
+
 function getDailyGymQuote(date: string) {
   const total = date.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0)
   return GYM_QUOTES[total % GYM_QUOTES.length]
@@ -314,6 +324,10 @@ function MotivationCard({ date }: { date: string }) {
   )
 }
 
+function getMealByLabel(log: DailyLog, label: MealEntry['label']) {
+  return log.meals.find((meal) => meal.label === label)
+}
+
 function makeId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID()
@@ -329,7 +343,49 @@ function makeMeal(label: MealEntry['label'], description = ''): MealEntry {
     description,
     proteinScore: 1,
     tags: [],
+    items: [],
   }
+}
+
+function makeFoodItem(name = '', calories = ''): FoodItem {
+  return {
+    id: makeId(),
+    name,
+    calories,
+  }
+}
+
+function normaliseFoodItems(value: unknown): FoodItem[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null
+
+      const raw = item as Record<string, unknown>
+      const name = typeof raw.name === 'string' ? raw.name : ''
+      const calories =
+        typeof raw.calories === 'string' || typeof raw.calories === 'number'
+          ? normaliseOptionalText(String(raw.calories))
+          : ''
+
+      if (!name.trim() && !calories.trim()) return null
+
+      return {
+        id: typeof raw.id === 'string' ? raw.id : makeId(),
+        name,
+        calories,
+      }
+    })
+    .filter((item): item is FoodItem => Boolean(item))
+}
+
+function getMealCalories(meal: MealEntry) {
+  return meal.items.reduce((sum, item) => sum + (safeNumber(item.calories) ?? 0), 0)
+}
+
+function getDailyFoodCalories(log: Pick<DailyLog, 'meals'>) {
+  return log.meals.reduce((sum, meal) => sum + getMealCalories(meal), 0)
 }
 
 function getPreviousComparableWorkout(logs: DailyLog[], draft: DailyLog) {
@@ -338,6 +394,22 @@ function getPreviousComparableWorkout(logs: DailyLog[], draft: DailyLog) {
   )
 
   return previousSameType ?? getLastWorkout(logs, draft.date)
+}
+
+function normaliseOptionalText(value: unknown) {
+  if (value === null || value === undefined) return ''
+
+  const text = String(value).trim()
+
+  if (!text || text === '-' || text === '—' || text.toLowerCase() === 'n/a' || text.toLowerCase() === 'na') {
+    return ''
+  }
+
+  return text
+}
+
+function cloudText(value: unknown) {
+  return value === null || value === undefined ? '' : String(value)
 }
 
 function compareExerciseToHistory(exercise: ExerciseEntry, history: ExerciseHistorySummary | undefined) {
@@ -645,6 +717,7 @@ function buildTrendSeries(logs: DailyLog[], metric: TrendMetric, range: TrendRan
       if (metric === 'calories-cardio') value = safeNumber(log.cardioCalories)
       if (metric === 'calories-basketball') value = safeNumber(log.basketballCalories)
       if (metric === 'calories-cycling') value = safeNumber(log.cyclingCalories)
+      if (metric === 'food-calories') value = getDailyFoodCalories(log) || null
 
       return { date: log.date, value }
     })
@@ -828,8 +901,8 @@ function createEmptyLog(date = toInputDate(new Date())): DailyLog {
     meals: [
       makeMeal('Pre-workout'),
       makeMeal('Lunch'),
-      makeMeal('Snack'),
       makeMeal('Dinner'),
+      makeMeal('Snack'),
     ],
     createdAt: now,
     updatedAt: now,
@@ -1176,6 +1249,36 @@ function buildNotesWithRawWorkout(existingNotes: string, rawWorkout: string) {
   return [existingWithoutOldRaw, rawBlock].filter(Boolean).join('\n\n')
 }
 
+function buildFoodCaloriesDashboard(logs: DailyLog[]) {
+  const logsWithFood = sortLogs(logs).filter((log) => getDailyFoodCalories(log) > 0)
+
+  const totals = logsWithFood.map((log) => ({
+    date: log.date,
+    total: getDailyFoodCalories(log),
+    meals: log.meals.map((meal) => ({
+      label: meal.label,
+      calories: getMealCalories(meal),
+    })),
+  }))
+
+  const latest = totals[0] ?? null
+
+  const highest = totals.reduce<typeof totals[number] | null>((winner, item) => {
+    if (!winner) return item
+    return item.total > winner.total ? item : winner
+  }, null)
+
+  const recent = totals.slice(0, 7)
+  const recentAverage = recent.length ? Math.round(average(recent.map((item) => item.total)) ?? 0) : null
+
+  return {
+    loggedDays: totals.length,
+    latest,
+    highest,
+    recentAverage,
+  }
+}
+
 function loadLogs(): DailyLog[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -1275,6 +1378,7 @@ function buildMealInsertRows(log: DailyLog, cloudLogId: string, includeTags: boo
       label: meal.label,
       description: emptyToNull(meal.description),
       protein_score: meal.proteinScore,
+      food_items: meal.items ?? [],
       position: index,
     }
 
@@ -1314,14 +1418,14 @@ function buildDailyLogPayload(log: DailyLog, userId: string, includeWaistSize: b
   return payload
 }
 
-function mapCloudRowsToLogs(dailyRows: DailyLogRow[], exerciseRows: ExerciseRow[], mealRows: MealRow[]) {
-  return dailyRows.map((row) => {
+function mapCloudRowsToLogs(rows: DailyLogRow[], exerciseRows: ExerciseRow[], mealRows: MealRow[]) {
+  return rows.map((row) => {
     const exercises = exerciseRows
       .filter((exercise) => exercise.daily_log_id === row.id)
       .sort((a, b) => a.position - b.position)
       .map((exercise) => ({
         id: exercise.id,
-        name: exercise.exercise_name,
+        name: exercise.exercise_name ?? '',
         weight: exercise.weight ?? '',
         unit: normaliseExerciseUnit(exercise.unit),
         sets: exercise.sets ?? '',
@@ -1338,31 +1442,34 @@ function mapCloudRowsToLogs(dailyRows: DailyLogRow[], exerciseRows: ExerciseRow[
         description: meal.description ?? '',
         proteinScore: Math.min(Math.max(meal.protein_score ?? 1, 0), 3) as MealEntry['proteinScore'],
         tags: normaliseMealTags(meal.tags),
+        items: normaliseFoodItems(meal.food_items),
       }))
 
     return {
       id: row.id,
       date: row.log_date,
-      weightKg: row.weight_kg === null ? '' : String(row.weight_kg),
-      waistSizeCm: row.waist_size_cm === null ? '' : String(row.waist_size_cm),
-      sleepHours: row.sleep_hours === null ? '' : String(row.sleep_hours),
+      weightKg: cloudText(row.weight_kg),
+      waistSizeCm: cloudText(row.waist_size_cm),
+      sleepHours: cloudText(row.sleep_hours),
       workoutType: normaliseWorkoutType(row.workout_type),
-      gymTime: row.gym_time ?? '',
-      preWorkout: row.pre_workout ?? '',
-      postGymEnergy: row.post_gym_energy === null ? '' : String(row.post_gym_energy),
-      treadmillDistanceKm: row.treadmill_distance_km === null ? '' : String(row.treadmill_distance_km),
-      treadmillMinutes: row.treadmill_minutes === null ? '' : String(row.treadmill_minutes),
-      treadmillIncline: row.treadmill_incline === null ? '' : String(row.treadmill_incline),
-      strengthCalories: row.strength_calories ?? '',
-      cardioCalories: row.cardio_calories ?? '',
-      basketballCalories: row.basketball_calories ?? '',
-      cyclingCalories: row.cycling_calories ?? '',
-      notes: row.notes ?? '',
+      gymTime: cloudText(row.gym_time),
+      preWorkout: cloudText(row.pre_workout),
+      postGymEnergy: cloudText(row.post_gym_energy),
+      treadmillDistanceKm: cloudText(row.treadmill_distance_km),
+      treadmillMinutes: cloudText(row.treadmill_minutes),
+      treadmillIncline: cloudText(row.treadmill_incline),
+      strengthCalories: cloudText(row.strength_calories),
+      cardioCalories: cloudText(row.cardio_calories),
+      basketballCalories: cloudText(row.basketball_calories),
+      cyclingCalories: cloudText(row.cycling_calories),
+      notes: cloudText(row.notes),
       exercises,
-      meals,
+      meals: meals.length
+        ? meals
+        : [makeMeal('Pre-workout'), makeMeal('Lunch'), makeMeal('Dinner'), makeMeal('Snack')],
       createdAt: row.created_at,
       updatedAt: row.updated_at,
-    } satisfies DailyLog
+    }
   })
 }
 
@@ -1505,70 +1612,76 @@ async function saveLogToCloud(log: DailyLog, userId: string) {
   }
 }
 
-function normaliseImportedLog(item: unknown): DailyLog {
-  if (!item || typeof item !== 'object') {
-    throw new Error('Import failed: every item must be an object.')
-  }
-
-  const source = item as Partial<DailyLog> & Record<string, unknown>
-  const date = typeof source.date === 'string' ? source.date : ''
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    throw new Error('Import failed: every log needs a date in YYYY-MM-DD format.')
-  }
-
+function normaliseImportedLog(raw: unknown): DailyLog {
+  const source = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const date = typeof source.date === 'string' && source.date ? source.date : toInputDate(new Date())
   const base = createEmptyLog(date)
+
   const exercises = Array.isArray(source.exercises)
-    ? source.exercises.map((exercise) => {
-        const entry = exercise as Partial<ExerciseEntry>
-        return {
-          id: typeof entry.id === 'string' ? entry.id : makeId(),
-          name: typeof entry.name === 'string' ? entry.name : '',
-          weight: typeof entry.weight === 'string' ? entry.weight : '',
-          unit: normaliseExerciseUnit(typeof entry.unit === 'string' ? entry.unit : null),
-          sets: typeof entry.sets === 'string' ? entry.sets : '',
-          reps: typeof entry.reps === 'string' ? entry.reps : '',
-          completedSets: typeof entry.completedSets === 'number' ? entry.completedSets : 0,
-        }
-      })
-    : []
+    ? source.exercises
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null
+
+          const entry = item as Record<string, unknown>
+
+          return {
+            id: typeof entry.id === 'string' ? entry.id : makeId(),
+            name: typeof entry.name === 'string' ? entry.name : '',
+            weight: normaliseOptionalText(entry.weight),
+            unit: normaliseExerciseUnit(typeof entry.unit === 'string' ? entry.unit : null),
+            sets: normaliseOptionalText(entry.sets),
+            reps: normaliseOptionalText(entry.reps),
+            completedSets: typeof entry.completedSets === 'number' ? entry.completedSets : 0,
+          }
+        })
+        .filter((item): item is ExerciseEntry => Boolean(item))
+    : base.exercises
 
   const meals = Array.isArray(source.meals)
-    ? source.meals.map((meal) => {
-        const entry = meal as Partial<MealEntry>
-        return {
-          id: typeof entry.id === 'string' ? entry.id : makeId(),
-          label: normaliseMealLabel(typeof entry.label === 'string' ? entry.label : 'Other'),
-          description: typeof entry.description === 'string' ? entry.description : '',
-          proteinScore: typeof entry.proteinScore === 'number'
-            ? (Math.min(Math.max(entry.proteinScore, 0), 3) as MealEntry['proteinScore'])
-            : 1,
-          tags: normaliseMealTags(entry.tags),
-        }
-      })
-    : []
+    ? source.meals
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null
+
+          const entry = item as Record<string, unknown>
+
+          return {
+            id: typeof entry.id === 'string' ? entry.id : makeId(),
+            label: normaliseMealLabel(typeof entry.label === 'string' ? entry.label : 'Other'),
+            description: typeof entry.description === 'string' ? entry.description : '',
+            proteinScore:
+              typeof entry.proteinScore === 'number'
+                ? (Math.min(Math.max(entry.proteinScore, 0), 3) as MealEntry['proteinScore'])
+                : 1,
+            tags: normaliseMealTags(entry.tags),
+            items: normaliseFoodItems(entry.items),
+          }
+        })
+        .filter((item): item is MealEntry => Boolean(item))
+    : base.meals
 
   return {
     ...base,
     id: typeof source.id === 'string' ? source.id : base.id,
-    weightKg: typeof source.weightKg === 'string' ? source.weightKg : source.weightKg == null ? '' : String(source.weightKg),
-    waistSizeCm: typeof source.waistSizeCm === 'string' ? source.waistSizeCm : source.waistSizeCm == null ? '' : String(source.waistSizeCm),
-    sleepHours: typeof source.sleepHours === 'string' ? source.sleepHours : source.sleepHours == null ? '' : String(source.sleepHours),
+    date,
+    weightKg: normaliseOptionalText(source.weightKg),
+    waistSizeCm: normaliseOptionalText(source.waistSizeCm),
+    sleepHours: normaliseOptionalText(source.sleepHours),
     workoutType: normaliseWorkoutType(typeof source.workoutType === 'string' ? source.workoutType : null),
-    gymTime: typeof source.gymTime === 'string' ? source.gymTime : '',
-    preWorkout: typeof source.preWorkout === 'string' ? source.preWorkout : '',
-    postGymEnergy: typeof source.postGymEnergy === 'string' ? source.postGymEnergy : source.postGymEnergy == null ? '' : String(source.postGymEnergy),
-    treadmillDistanceKm: typeof source.treadmillDistanceKm === 'string' ? source.treadmillDistanceKm : source.treadmillDistanceKm == null ? '' : String(source.treadmillDistanceKm),
-    treadmillMinutes: typeof source.treadmillMinutes === 'string' ? source.treadmillMinutes : source.treadmillMinutes == null ? '' : String(source.treadmillMinutes),
-    treadmillIncline: typeof source.treadmillIncline === 'string' ? source.treadmillIncline : source.treadmillIncline == null ? '' : String(source.treadmillIncline),
-    strengthCalories: typeof source.strengthCalories === 'string' ? source.strengthCalories : source.strengthCalories == null ? '' : String(source.strengthCalories),
-    cardioCalories: typeof source.cardioCalories === 'string' ? source.cardioCalories : source.cardioCalories == null ? '' : String(source.cardioCalories),
-    basketballCalories: typeof source.basketballCalories === 'string' ? source.basketballCalories : source.basketballCalories == null ? '' : String(source.basketballCalories),
-    cyclingCalories: typeof source.cyclingCalories === 'string' ? source.cyclingCalories : source.cyclingCalories == null ? '' : String(source.cyclingCalories),
+    gymTime: normaliseOptionalText(source.gymTime),
+    preWorkout: normaliseOptionalText(source.preWorkout),
+    postGymEnergy: normaliseOptionalText(source.postGymEnergy),
+    treadmillDistanceKm: normaliseOptionalText(source.treadmillDistanceKm),
+    treadmillMinutes: normaliseOptionalText(source.treadmillMinutes),
+    treadmillIncline: normaliseOptionalText(source.treadmillIncline) || base.treadmillIncline,
+    strengthCalories: normaliseOptionalText(source.strengthCalories),
+    cardioCalories: normaliseOptionalText(source.cardioCalories),
+    basketballCalories: normaliseOptionalText(source.basketballCalories),
+    cyclingCalories: normaliseOptionalText(source.cyclingCalories),
     notes: typeof source.notes === 'string' ? source.notes : '',
     exercises,
-    meals,
+    meals: meals.length ? meals : base.meals,
     createdAt: typeof source.createdAt === 'string' ? source.createdAt : base.createdAt,
-    updatedAt: new Date().toISOString(),
+    updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : new Date().toISOString(),
   }
 }
 
@@ -1830,13 +1943,6 @@ function App() {
     updateDraft('meals', [...draft.meals, makeMeal('Other')])
   }
 
-  function removeMeal(id: string) {
-    updateDraft(
-      'meals',
-      draft.meals.filter((meal) => meal.id !== id),
-    )
-  }
-
   function openExistingCoachChat() {
     if (!EXISTING_CHATGPT_COACH_URL) {
       window.alert('Existing ChatGPT coach URL is not configured.')
@@ -1943,10 +2049,8 @@ function App() {
         {activeTab === 'nutrition' && (
           <NutritionView
             draft={draft}
-            updateDraft={updateDraft}
             updateMeal={updateMeal}
             addMeal={addMeal}
-            removeMeal={removeMeal}
           />
         )}
 
@@ -2204,6 +2308,7 @@ function TodayView({
   const bodyStatus = draft.weightKg ? `${draft.weightKg} kg` : stats.latestWeightLabel
   const workoutSummary = draft.exercises.length ? `${draft.exercises.length} exercises · ${draft.treadmillDistanceKm || '—'} km treadmill` : 'No workout details saved yet'
   const totalCalories = getTotalCaloriesBurned(draft)
+  const foodCalories = getDailyFoodCalories(draft)
   const plannedWorkout = hasWorkoutData(draft) ? draft.workoutType === 'Custom' ? getDefaultWorkoutTypeForDate(draft.date) : draft.workoutType : getDefaultWorkoutTypeForDate(draft.date)
 
   return (
@@ -2312,6 +2417,16 @@ function TodayView({
           <p>Cardio last 7</p>
           <strong>{stats.cardioMinutesLast7} min</strong>
           <span>{stats.cardioDistanceLast7Label} logged distance</span>
+        </article>
+
+        <article className="metric-card">
+          <p>Food intake</p>
+          <strong>{foodCalories ? `${foodCalories}` : '—'}</strong>
+          <span>
+            Pre {getMealCalories(getMealByLabel(draft, 'Pre-workout') ?? makeMeal('Pre-workout')) || '—'} · Lunch{' '}
+            {getMealCalories(getMealByLabel(draft, 'Lunch') ?? makeMeal('Lunch')) || '—'} · Dinner{' '}
+            {getMealCalories(getMealByLabel(draft, 'Dinner') ?? makeMeal('Dinner')) || '—'}
+          </span>
         </article>
 
         <article className="metric-card">
@@ -2813,106 +2928,135 @@ Basketball: 1329 kcal`}
 
 function NutritionView({
   draft,
-  updateDraft,
   updateMeal,
   addMeal,
-  removeMeal,
 }: {
   draft: DailyLog
-  updateDraft: <K extends keyof DailyLog>(key: K, value: DailyLog[K]) => void
   updateMeal: (id: string, patch: Partial<MealEntry>) => void
   addMeal: () => void
-  removeMeal: (id: string) => void
 }) {
-  function toggleMealTag(meal: MealEntry, tag: MealTag) {
-    const currentTags = meal.tags ?? []
-    const nextTags = currentTags.includes(tag)
-      ? currentTags.filter((item) => item !== tag)
-      : [...currentTags, tag]
+  const dailyFoodCalories = getDailyFoodCalories(draft)
 
-    updateMeal(meal.id, { tags: nextTags })
+  function addFoodItem(meal: MealEntry) {
+    updateMeal(meal.id, {
+      items: [...meal.items, makeFoodItem()],
+    })
+  }
+
+  function updateFoodItem(meal: MealEntry, itemId: string, patch: Partial<FoodItem>) {
+    updateMeal(meal.id, {
+      items: meal.items.map((item) => (item.id === itemId ? { ...item, ...patch } : item)),
+    })
+  }
+
+  function removeFoodItem(meal: MealEntry, itemId: string) {
+    updateMeal(meal.id, {
+      items: meal.items.filter((item) => item.id !== itemId),
+    })
+  }
+
+  function displayMealLabel(label: MealEntry['label']) {
+    return label === 'Snack' ? 'Snacks' : label
   }
 
   return (
     <div className="view-grid">
-      <section className="panel span-2 form-panel">
+      <section className="panel span-2 nutrition-summary-panel">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">Fuel</p>
-            <h3>Nutrition log</h3>
+            <p className="eyebrow">Food log</p>
+            <h3>Track what you ate, not vague labels.</h3>
           </div>
-          <button className="ghost-button" type="button" onClick={addMeal}>
-            Add meal
-          </button>
+          <span className="status-pill">
+            {dailyFoodCalories ? `${dailyFoodCalories} kcal` : 'No kcal yet'}
+          </span>
         </div>
 
-        <label>
-          Pre-workout food
-          <textarea
-            placeholder="2 bananas + latte, or eggs + bread + banana"
-            value={draft.preWorkout}
-            onChange={(event) => updateDraft('preWorkout', event.target.value)}
-          />
-        </label>
+        <p className="helper-copy">
+          Add each food item under the meal where you ate it, then enter the kcal from your food tracking app.
+          GymOS will total each meal and the full day.
+        </p>
+      </section>
 
-        <div className="meal-list">
-          {draft.meals.map((meal) => (
-            <article className="meal-card" key={meal.id}>
-              <select
-                aria-label="Meal label"
-                value={meal.label}
-                onChange={(event) => updateMeal(meal.id, { label: event.target.value as MealEntry['label'] })}
-              >
-                <option>Pre-workout</option>
-                <option>Breakfast</option>
-                <option>Lunch</option>
-                <option>Snack</option>
-                <option>Dinner</option>
-                <option>Other</option>
-              </select>
+      {draft.meals.map((meal) => {
+        const mealCalories = getMealCalories(meal)
 
+        return (
+          <section className="meal-card food-item-meal-card" key={meal.id}>
+            <div className="meal-header-row">
+              <div>
+                <p className="eyebrow">{displayMealLabel(meal.label)}</p>
+                <h3>{mealCalories ? `${mealCalories} kcal` : 'No kcal yet'}</h3>
+              </div>
+
+              <button className="ghost-button" type="button" onClick={() => addFoodItem(meal)}>
+                Add food
+              </button>
+            </div>
+
+            <div className="food-item-list">
+              {meal.items.length === 0 && (
+                <div className="empty-state">
+                  No food items yet. Add what you ate and the kcal from your tracker.
+                </div>
+              )}
+
+              {meal.items.map((item) => (
+                <div className="food-item-row" key={item.id}>
+                  <input
+                    aria-label="Food item"
+                    placeholder="e.g. 2 eggs / dal rice / protein bar"
+                    value={item.name}
+                    onChange={(event) => updateFoodItem(meal, item.id, { name: event.target.value })}
+                  />
+
+                  <input
+                    aria-label="Calories"
+                    inputMode="decimal"
+                    placeholder="kcal"
+                    value={item.calories}
+                    onChange={(event) => updateFoodItem(meal, item.id, { calories: event.target.value })}
+                  />
+
+                  <button
+                    className="micro-button"
+                    type="button"
+                    onClick={() => removeFoodItem(meal, item.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <label className="meal-notes-label">
+              Meal notes, optional
               <textarea
-                aria-label="Meal description"
-                placeholder="black chickpeas + chapati + dal + rice + salad"
+                placeholder="Anything useful about this meal?"
                 value={meal.description}
                 onChange={(event) => updateMeal(meal.id, { description: event.target.value })}
               />
+            </label>
+          </section>
+        )
+      })}
 
-              <div className="meal-tag-grid">
-                {MEAL_TAGS.map((tag) => (
-                  <button
-                    key={tag.id}
-                    className={`meal-tag-chip ${meal.tags?.includes(tag.id) ? 'active' : ''}`}
-                    type="button"
-                    onClick={() => toggleMealTag(meal, tag.id)}
-                  >
-                    {tag.label}
-                  </button>
-                ))}
-              </div>
+      <section className="panel span-2">
+        <div className="section-heading compact">
+          <div>
+            <p className="eyebrow">Daily intake</p>
+            <h3>{dailyFoodCalories ? `${dailyFoodCalories} kcal logged` : 'No calories logged yet'}</h3>
+          </div>
+          <button className="ghost-button" type="button" onClick={addMeal}>
+            Add another meal
+          </button>
+        </div>
 
-              <div className="meal-footer">
-                <label>
-                  Protein quality
-                  <select
-                    value={meal.proteinScore}
-                    onChange={(event) =>
-                      updateMeal(meal.id, {
-                        proteinScore: Number(event.target.value) as MealEntry['proteinScore'],
-                      })
-                    }
-                  >
-                    <option value={0}>0 - weak</option>
-                    <option value={1}>1 - light</option>
-                    <option value={2}>2 - decent</option>
-                    <option value={3}>3 - strong</option>
-                  </select>
-                </label>
-
-                <button className="danger-button" type="button" onClick={() => removeMeal(meal.id)}>
-                  Remove
-                </button>
-              </div>
+        <div className="meal-calorie-breakdown">
+          {draft.meals.map((meal) => (
+            <article key={meal.id}>
+              <span>{meal.label === 'Snack' ? 'Snacks' : meal.label}</span>
+              <strong>{getMealCalories(meal) || '—'} kcal</strong>
             </article>
           ))}
         </div>
@@ -2943,6 +3087,7 @@ function TrendsView({
   const splitCounts = useMemo(() => buildSplitCounts(logs), [logs])
   const cardioStats = useMemo(() => buildCardioDashboard(logs), [logs])
   const heatmap = useMemo(() => buildConsistencyHeatmap(logs), [logs])
+  const foodCaloriesDashboard = useMemo(() => buildFoodCaloriesDashboard(logs), [logs])
   const coverage = useMemo(
     () => buildDataCoverage(logs, heatmap.days.map((day) => day.date)),
     [logs, heatmap],
@@ -3271,6 +3416,26 @@ function TrendsView({
             <span>Nutrition signal</span>
             <strong>{nutritionTags.taggedMeals}/{nutritionTags.totalMeals}</strong>
             <p>{nutritionTags.summary}</p>
+          </article>
+
+          <article className="analysis-card">
+            <span>Food calories</span>
+            <strong>
+              {foodCaloriesDashboard.latest
+                ? `${foodCaloriesDashboard.latest.total} kcal`
+                : '—'}
+            </strong>
+            <p>
+              {foodCaloriesDashboard.latest
+                ? `Latest logged intake: ${formatDateFull(foodCaloriesDashboard.latest.date)}. Recent average: ${
+                    foodCaloriesDashboard.recentAverage ?? '—'
+                  } kcal. Highest logged day: ${
+                    foodCaloriesDashboard.highest
+                      ? `${foodCaloriesDashboard.highest.total} kcal on ${formatDateFull(foodCaloriesDashboard.highest.date)}`
+                      : '—'
+                  }.`
+                : 'Add food items and kcal to unlock intake trends.'}
+            </p>
           </article>
         </div>
       </section>
@@ -4394,6 +4559,12 @@ function buildCoachPrompt(draft: DailyLog, logs: DailyLog[], question: string) {
     cyclingCalories: log.cyclingCalories || null,
     totalCalories: getTotalCaloriesBurned(log) || null,
     exerciseCount: log.exercises.length,
+    foodCalories: getDailyFoodCalories(log) || null,
+    mealCalories: log.meals.map((meal) => ({
+      label: meal.label,
+      calories: getMealCalories(meal),
+      items: meal.items,
+    })),
     exercises: log.exercises.map((exercise) => ({
       name: exercise.name,
       weight: exercise.weight || null,
@@ -4423,6 +4594,7 @@ Recent trend summary:
 - Training days in recent 7 logs: ${stats.trainingDaysLast7}/7
 - Cardio minutes in recent 7 logs: ${stats.cardioMinutesLast7}
 - Cardio distance in recent 7 logs: ${stats.cardioDistanceLast7Label}
+- Today food intake: ${getDailyFoodCalories(draft) || '—'} kcal
 - Nutrition tag summary: ${nutritionTags.summary}
 
 Top exercise progression:
