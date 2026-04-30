@@ -269,10 +269,23 @@ const GYM_QUOTES = [
 ]
 
 function ensureDefaultMeals(meals: MealEntry[]) {
-  const existingByLabel = new Map(meals.map((meal) => [meal.label, meal]))
+  const normalisedMeals = meals.map((meal) => ({
+    ...meal,
+    label: normaliseMealLabel(meal.label),
+    items: normaliseFoodItems(meal.items),
+  }))
 
-  const defaultMeals = DEFAULT_MEAL_ORDER.map((label) => existingByLabel.get(label) ?? makeMeal(label))
-  const extraMeals = meals.filter((meal) => !DEFAULT_MEAL_ORDER.includes(meal.label))
+  const existingByLabel = new Map<MealEntry['label'], MealEntry>()
+
+  for (const meal of normalisedMeals) {
+    existingByLabel.set(meal.label, meal)
+  }
+
+  const defaultMeals = DEFAULT_MEAL_ORDER.map((label) => {
+    return existingByLabel.get(label) ?? makeMeal(label)
+  })
+
+  const extraMeals = normalisedMeals.filter((meal) => !DEFAULT_MEAL_ORDER.includes(meal.label))
 
   return [...defaultMeals, ...extraMeals]
 }
@@ -2951,6 +2964,15 @@ function NutritionView({
   addMeal: () => void
 }) {
   const displayMeals = getDisplayMeals(draft)
+  console.log(
+    'NutritionView meals',
+    draft.date,
+    displayMeals.map((meal) => ({
+      label: meal.label,
+      items: meal.items,
+      kcal: getMealCalories(meal),
+    })),
+  )
   const dailyFoodCalories = getDailyFoodCalories({ meals: displayMeals })
 
   function addFoodItem(meal: MealEntry) {
