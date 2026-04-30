@@ -1493,6 +1493,41 @@ function mapCloudRowsToLogs(rows: DailyLogRow[], exerciseRows: ExerciseRow[], me
   })
 }
 
+async function fetchRelatedRows<T>(
+  client: NonNullable<typeof supabase>,
+  tableName: 'exercise_entries' | 'meal_entries',
+  dailyLogIds: string[],
+) {
+  if (!dailyLogIds.length) return [] as T[]
+
+  const pageSize = 1000
+  let from = 0
+  const allRows: T[] = []
+
+  while (true) {
+    const to = from + pageSize - 1
+
+    const { data, error } = await client
+      .from(tableName)
+      .select('*')
+      .in('daily_log_id', dailyLogIds)
+      .order('daily_log_id', { ascending: true })
+      .order('position', { ascending: true })
+      .range(from, to)
+
+    if (error) throw error
+
+    const rows = (data ?? []) as T[]
+    allRows.push(...rows)
+
+    if (rows.length < pageSize) break
+
+    from += pageSize
+  }
+
+  return allRows
+}
+
 async function fetchCloudLogs(userId: string) {
   const client = supabase
   if (!client) return []
@@ -1510,16 +1545,12 @@ async function fetchCloudLogs(userId: string) {
 
   if (!ids.length) return []
 
-  const [{ data: exerciseRows, error: exerciseError }, { data: mealRows, error: mealError }] =
-    await Promise.all([
-      client.from('exercise_entries').select('*').in('daily_log_id', ids).order('position', { ascending: true }),
-      client.from('meal_entries').select('*').in('daily_log_id', ids).order('position', { ascending: true }),
-    ])
+  const [exerciseRows, mealRows] = await Promise.all([
+    fetchRelatedRows<ExerciseRow>(client, 'exercise_entries', ids),
+    fetchRelatedRows<MealRow>(client, 'meal_entries', ids),
+  ])
 
-  if (exerciseError) throw exerciseError
-  if (mealError) throw mealError
-
-  return sortLogs(mapCloudRowsToLogs(rows, (exerciseRows ?? []) as ExerciseRow[], (mealRows ?? []) as MealRow[]))
+  return sortLogs(mapCloudRowsToLogs(rows, exerciseRows, mealRows))
 }
 
 async function saveLogToCloud(log: DailyLog, userId: string) {
