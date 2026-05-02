@@ -242,6 +242,7 @@ const LOWER_EXERCISE_CANONICALS = new Set([
   'standing-calf-raise',
   'dumbbell-romanian-deadlift',
   'plank',
+  'crunches',
 ])
 
 const UPPER_EXERCISE_CANONICALS = new Set([
@@ -267,28 +268,6 @@ const GYM_QUOTES = [
   'You do not need motivation. You need a logged rep.',
   'Consistency is the compound interest of training.',
 ]
-
-function ensureDefaultMeals(meals: MealEntry[]) {
-  const normalisedMeals = meals.map((meal) => ({
-    ...meal,
-    label: normaliseMealLabel(meal.label),
-    items: normaliseFoodItems(meal.items),
-  }))
-
-  const existingByLabel = new Map<MealEntry['label'], MealEntry>()
-
-  for (const meal of normalisedMeals) {
-    existingByLabel.set(meal.label, meal)
-  }
-
-  const defaultMeals = DEFAULT_MEAL_ORDER.map((label) => {
-    return existingByLabel.get(label) ?? makeDefaultMeal(label)
-  })
-
-  const extraMeals = normalisedMeals.filter((meal) => !DEFAULT_MEAL_ORDER.includes(meal.label))
-
-  return [...defaultMeals, ...extraMeals]
-}
 
 function AwardCategoryIcon({ category }: { category: AwardCategory }) {
   if (category === 'strength') {
@@ -347,10 +326,6 @@ function MotivationCard({ date }: { date: string }) {
   )
 }
 
-function getMealByLabel(log: DailyLog, label: MealEntry['label']) {
-  return log.meals.find((meal) => meal.label === label)
-}
-
 function getDisplayMeals(log: DailyLog) {
   return ensureDefaultMeals(log.meals)
 }
@@ -379,6 +354,30 @@ function makeDefaultMeal(label: MealEntry['label']): MealEntry {
     ...makeMeal(label),
     id: `default-${label.toLowerCase().replace(/\s+/g, '-')}`,
   }
+}
+
+function ensureDefaultMeals(meals: MealEntry[]) {
+  const normalisedMeals = meals.map((meal) => ({
+    ...meal,
+    label: normaliseMealLabel(meal.label),
+    // Important: do NOT call normaliseFoodItems here.
+    // It removes blank items, which kills newly added empty food rows in the UI.
+    items: Array.isArray(meal.items) ? meal.items : [],
+  }))
+
+  const existingByLabel = new Map<MealEntry['label'], MealEntry>()
+
+  for (const meal of normalisedMeals) {
+    existingByLabel.set(meal.label, meal)
+  }
+
+  const defaultMeals = DEFAULT_MEAL_ORDER.map((label) => {
+    return existingByLabel.get(label) ?? makeDefaultMeal(label)
+  })
+
+  const extraMeals = normalisedMeals.filter((meal) => !DEFAULT_MEAL_ORDER.includes(meal.label))
+
+  return [...defaultMeals, ...extraMeals]
 }
 
 function makeFoodItem(name = '', calories = ''): FoodItem {
@@ -1279,25 +1278,27 @@ function buildNotesWithRawWorkout(existingNotes: string, rawWorkout: string) {
 }
 
 function buildFoodCaloriesDashboard(logs: DailyLog[]) {
-  const logsWithFood = sortLogs(logs).filter((log) => getDailyFoodCalories(log) > 0)
+  const totals = [...logs]
+    .map((log) => ({
+      date: log.date,
+      total: getDailyFoodCalories(log),
+      meals: ensureDefaultMeals(log.meals).map((meal) => ({
+        label: meal.label,
+        calories: getMealCalories(meal),
+      })),
+    }))
+    .filter((item) => item.total > 0)
 
-  const totals = logsWithFood.map((log) => ({
-    date: log.date,
-    total: getDailyFoodCalories(log),
-    meals: log.meals.map((meal) => ({
-      label: meal.label,
-      calories: getMealCalories(meal),
-    })),
-  }))
+  const newestFirst = [...totals].sort((a, b) => b.date.localeCompare(a.date))
 
-  const latest = totals[0] ?? null
+  const latest = newestFirst[0] ?? null
 
   const highest = totals.reduce<typeof totals[number] | null>((winner, item) => {
     if (!winner) return item
     return item.total > winner.total ? item : winner
   }, null)
 
-  const recent = totals.slice(0, 7)
+  const recent = newestFirst.slice(0, 7)
   const recentAverage = recent.length ? Math.round(average(recent.map((item) => item.total)) ?? 0) : null
 
   return {
@@ -2000,17 +2001,23 @@ function App() {
   }
 
   function updateMeal(id: string, patch: Partial<MealEntry>) {
-    const currentMeals = ensureDefaultMeals(draft.meals)
+    setDraft((current) => {
+      const currentMeals = ensureDefaultMeals(current.meals)
 
-    const nextMeals = currentMeals.map((meal) => {
-      if (meal.id === id) {
-        return { ...meal, ...patch }
+      const nextMeals = currentMeals.map((meal) => {
+        if (meal.id === id) {
+          return { ...meal, ...patch }
+        }
+
+        return meal
+      })
+
+      return {
+        ...current,
+        meals: nextMeals,
+        updatedAt: new Date().toISOString(),
       }
-
-      return meal
     })
-
-    updateDraft('meals', nextMeals)
   }
 
   function removeExercise(id: string) {
@@ -2389,7 +2396,8 @@ function TodayView({
   const bodyStatus = draft.weightKg ? `${draft.weightKg} kg` : stats.latestWeightLabel
   const workoutSummary = draft.exercises.length ? `${draft.exercises.length} exercises · ${draft.treadmillDistanceKm || '—'} km treadmill` : 'No workout details saved yet'
   const totalCalories = getTotalCaloriesBurned(draft)
-  const foodCalories = getDailyFoodCalories(draft)
+  const todayMeals = getDisplayMeals(draft)
+  const foodCalories = getDailyFoodCalories({ meals: todayMeals })  
   const plannedWorkout = hasWorkoutData(draft) ? draft.workoutType === 'Custom' ? getDefaultWorkoutTypeForDate(draft.date) : draft.workoutType : getDefaultWorkoutTypeForDate(draft.date)
 
   return (
@@ -2504,10 +2512,14 @@ function TodayView({
           <p>Food intake</p>
           <strong>{foodCalories ? `${foodCalories}` : '—'}</strong>
           <span>
-            Pre {getMealCalories(getMealByLabel(draft, 'Pre-workout') ?? makeMeal('Pre-workout')) || '—'} · Breakfast{' '}
-            {getMealCalories(getMealByLabel(draft, 'Breakfast') ?? makeMeal('Breakfast')) || '—'} · Lunch{' '}
-            {getMealCalories(getMealByLabel(draft, 'Lunch') ?? makeMeal('Lunch')) || '—'} · Dinner{' '}
-            {getMealCalories(getMealByLabel(draft, 'Dinner') ?? makeMeal('Dinner')) || '—'}
+            {getDisplayMeals(draft)
+              .filter((meal) => ['Pre-workout', 'Breakfast', 'Lunch', 'Dinner'].includes(meal.label))
+              .map((meal) => {
+                const label = meal.label === 'Pre-workout' ? 'Pre' : meal.label
+                const kcal = getMealCalories(meal) || '—'
+                return `${label} ${kcal}`
+              })
+              .join(' · ')}
           </span>
         </article>
 
@@ -3869,68 +3881,27 @@ function buildDataCoverage(logs: DailyLog[], dateWindow?: string[]) {
   }
 }
 
-function buildNutritionTagDashboard(logs: DailyLog[]) {
-  const counts = new Map<MealTag, number>()
-  let totalMeals = 0
-  let taggedMeals = 0
-
-  for (const log of logs) {
-    for (const meal of log.meals) {
-      totalMeals += 1
-
-      if (meal.tags?.length) {
-        taggedMeals += 1
-      }
-
-      for (const tag of meal.tags ?? []) {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1)
-      }
-    }
-  }
-
-  const topTags = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([id, count]) => ({
-      id,
-      label: MEAL_TAGS.find((tag) => tag.id === id)?.label ?? id,
-      count,
+function buildCaloriesDashboard(logs: DailyLog[]) {
+  const totals = [...logs]
+    .filter((log) => getTotalCaloriesBurned(log) > 0)
+    .map((log) => ({
+      date: log.date,
+      total: getTotalCaloriesBurned(log),
+      strength: safeNumber(log.strengthCalories) ?? 0,
+      cardio: safeNumber(log.cardioCalories) ?? 0,
+      basketball: safeNumber(log.basketballCalories) ?? 0,
+      cycling: safeNumber(log.cyclingCalories) ?? 0,
+      workoutType: log.workoutType,
     }))
 
-  return {
-    totalMeals,
-    taggedMeals,
-    topTags,
-    highProteinMeals: counts.get('high-protein') ?? 0,
-    lowProteinMeals: counts.get('low-protein') ?? 0,
-    restaurantMeals: counts.get('restaurant') ?? 0,
-    postWorkoutMeals: counts.get('post-workout') ?? 0,
-    lateMeals: counts.get('late-meal') ?? 0,
-    summary: topTags.length
-      ? topTags.map((tag) => `${tag.label} ${tag.count}`).join(' · ')
-      : 'No nutrition tags yet.',
-  }
-}
-
-function buildCaloriesDashboard(logs: DailyLog[]) {
-  const logsWithCalories = sortLogs(logs).filter((log) => getTotalCaloriesBurned(log) > 0)
-
-  const totals = logsWithCalories.map((log) => ({
-    date: log.date,
-    total: getTotalCaloriesBurned(log),
-    strength: safeNumber(log.strengthCalories) ?? 0,
-    cardio: safeNumber(log.cardioCalories) ?? 0,
-    basketball: safeNumber(log.basketballCalories) ?? 0,
-    cycling: safeNumber(log.cyclingCalories) ?? 0,
-    workoutType: log.workoutType,
-  }))
+  const newestFirst = [...totals].sort((a, b) => b.date.localeCompare(a.date))
 
   const best = totals.reduce<typeof totals[number] | null>((winner, item) => {
     if (!winner) return item
     return item.total > winner.total ? item : winner
   }, null)
 
-  const recent = totals.slice(0, 7)
+  const recent = newestFirst.slice(0, 7)
   const recentAverage = recent.length ? Math.round(average(recent.map((item) => item.total)) ?? 0) : null
 
   const bestByCategory = {
@@ -4296,6 +4267,11 @@ const EXERCISE_ALIASES: Array<{
     display: 'Plank',
     patterns: [/\bplank\b/i],
   },
+  {
+    canonical: 'crunches',
+    display: 'Crunches',
+    patterns: [/^crunch(es)?$/i, /^ab\s*crunch(es)?$/i],
+  },
 ]
 
 function cleanExerciseName(name: string) {
@@ -4588,11 +4564,20 @@ function buildStats(logs: DailyLog[]) {
 function buildCoachInsight(draft: DailyLog, stats: ReturnType<typeof buildStats>) {
   const insights: string[] = []
   const sleep = safeNumber(draft.sleepHours)
-  const hasProteinSignal =
-    draft.meals.some((meal) => meal.tags.includes('high-protein')) ||
-    /egg|yoghurt|curd|milk|paneer|chicken|protein|dal|chickpeas/i.test(
-      `${draft.preWorkout} ${draft.meals.map((meal) => meal.description).join(' ')}`,
-    )
+  const displayMeals = ensureDefaultMeals(draft.meals)
+  const foodCalories = getDailyFoodCalories({ meals: displayMeals })
+  const totalBurnedCalories = getTotalCaloriesBurned(draft)
+
+  const foodText = displayMeals
+    .flatMap((meal) => [
+      meal.description,
+      ...meal.items.map((item) => item.name),
+    ])
+    .join(' ')
+
+  const hasProteinSignal = /egg|eggs|yoghurt|yogurt|curd|milk|paneer|chicken|fish|tuna|salmon|shrimp|prawns|protein|dal|lentil|lentils|chickpeas|beans|tofu|mutton|beef/i.test(
+    `${draft.preWorkout} ${foodText}`,
+  )
 
   if (!draft.weightKg) {
     insights.push('Weight is missing. That is fine occasionally, but trends need repeated weigh-ins.')
@@ -4606,8 +4591,16 @@ function buildCoachInsight(draft: DailyLog, stats: ReturnType<typeof buildStats>
     insights.push('No workout is logged yet. Paste the raw workout first, then save.')
   }
 
-  if (!hasProteinSignal) {
-    insights.push('Protein signal looks weak. Tag high-protein meals or add a clear protein source.')
+  if (!foodCalories) {
+    insights.push('Food intake is not logged yet. Add food items and kcal before asking for end-of-day coaching.')
+  }
+
+  if (foodCalories && totalBurnedCalories && foodCalories < totalBurnedCalories * 0.7) {
+    insights.push('Food kcal looks very low compared with activity burn. Check that meals are fully logged before reading too much into the day.')
+  }
+
+  if (foodCalories && !hasProteinSignal) {
+    insights.push('Food is logged, but the protein signal looks weak from item names. Add clearer item names if protein was actually included.')
   }
 
   if (draft.exercises.length > 8) {
@@ -4619,7 +4612,7 @@ function buildCoachInsight(draft: DailyLog, stats: ReturnType<typeof buildStats>
   }
 
   if (!insights.length) {
-    insights.push('Today is structurally fine. The useful question is whether load, reps, and consistency are improving.')
+    insights.push('Today is structurally fine. The useful question is whether load, reps, consistency, intake, and recovery are improving.')
   }
 
   return insights
@@ -4628,37 +4621,46 @@ function buildCoachInsight(draft: DailyLog, stats: ReturnType<typeof buildStats>
 function buildCoachPrompt(draft: DailyLog, logs: DailyLog[], question: string) {
   const stats = buildStats(logs)
   const exerciseDashboard = buildExerciseDashboard(logs)
-  const nutritionTags = buildNutritionTagDashboard(logs)
+  const foodDashboard = buildFoodCaloriesDashboard(logs)
   const workoutComparison = buildWorkoutCoachComparison(draft, logs)
 
-  const recentLogs = sortLogs(logs).slice(0, 14).map((log) => ({
-    date: log.date,
-    weightKg: log.weightKg || null,
-    waistSizeCm: log.waistSizeCm || null,
-    workoutType: log.workoutType,
-    treadmillDistanceKm: log.treadmillDistanceKm || null,
-    treadmillMinutes: log.treadmillMinutes || null,
-    strengthCalories: log.strengthCalories || null,
-    cardioCalories: log.cardioCalories || null,
-    basketballCalories: log.basketballCalories || null,
-    cyclingCalories: log.cyclingCalories || null,
-    totalCalories: getTotalCaloriesBurned(log) || null,
-    exerciseCount: log.exercises.length,
-    foodCalories: getDailyFoodCalories(log) || null,
-    mealCalories: log.meals.map((meal) => ({
-      label: meal.label,
-      calories: getMealCalories(meal),
-      items: meal.items,
-    })),
-    exercises: log.exercises.map((exercise) => ({
-      name: exercise.name,
-      weight: exercise.weight || null,
-      unit: exercise.unit,
-      sets: exercise.sets || null,
-      reps: exercise.reps || null,
-    })),
-    mealTags: log.meals.flatMap((meal) => meal.tags),
-  }))
+  const draftMeals = ensureDefaultMeals(draft.meals)
+  const draftFoodCalories = getDailyFoodCalories({ meals: draftMeals })
+
+  const recentLogs = sortLogs(logs)
+    .slice(0, 14)
+    .map((log) => {
+      const meals = ensureDefaultMeals(log.meals)
+
+      return {
+        date: log.date,
+        weightKg: log.weightKg || null,
+        waistSizeCm: log.waistSizeCm || null,
+        workoutType: log.workoutType,
+        treadmillDistanceKm: log.treadmillDistanceKm || null,
+        treadmillMinutes: log.treadmillMinutes || null,
+        strengthCalories: log.strengthCalories || null,
+        cardioCalories: log.cardioCalories || null,
+        basketballCalories: log.basketballCalories || null,
+        cyclingCalories: log.cyclingCalories || null,
+        totalCaloriesBurned: getTotalCaloriesBurned(log) || null,
+        foodCalories: getDailyFoodCalories({ meals }) || null,
+        exerciseCount: log.exercises.length,
+        exercises: log.exercises.map((exercise) => ({
+          name: exercise.name,
+          weight: exercise.weight || null,
+          unit: exercise.unit,
+          sets: exercise.sets || null,
+          reps: exercise.reps || null,
+        })),
+        meals: meals.map((meal) => ({
+          label: meal.label,
+          calories: getMealCalories(meal),
+          items: meal.items,
+          description: meal.description || null,
+        })),
+      }
+    })
 
   return `You are my direct fitness analyst. Be practical, blunt, and evidence-based.
 
@@ -4667,20 +4669,39 @@ Goal: body recomposition, fat loss, better gym consistency, maintain or gain str
 Question: ${question}
 
 Today’s log:
-${JSON.stringify(draft, null, 2)}
+${JSON.stringify(
+  {
+    ...draft,
+    meals: draftMeals,
+    totalFoodCalories: draftFoodCalories || null,
+    totalCaloriesBurned: getTotalCaloriesBurned(draft) || null,
+  },
+  null,
+  2,
+)}
 
 Workout comparison:
 ${JSON.stringify(workoutComparison, null, 2)}
 
 Recent trend summary:
 - Today calories burned: strength ${draft.strengthCalories || '—'} kcal, cardio/running ${draft.cardioCalories || '—'} kcal, basketball ${draft.basketballCalories || '—'} kcal, cycling ${draft.cyclingCalories || '—'} kcal, total ${getTotalCaloriesBurned(draft) || '—'} kcal
+- Today food intake: ${draftFoodCalories || '—'} kcal
+- Latest logged food intake: ${
+    foodDashboard.latest
+      ? `${foodDashboard.latest.total} kcal on ${formatDateFull(foodDashboard.latest.date)}`
+      : '—'
+  }
+- Recent food intake average: ${foodDashboard.recentAverage ?? '—'} kcal
+- Highest logged food intake: ${
+    foodDashboard.highest
+      ? `${foodDashboard.highest.total} kcal on ${formatDateFull(foodDashboard.highest.date)}`
+      : '—'
+  }
 - 7-day average weight: ${formatKg(stats.sevenDayAverage)}
 - 14-day average weight: ${formatKg(stats.fourteenDayAverage)}
 - Training days in recent 7 logs: ${stats.trainingDaysLast7}/7
 - Cardio minutes in recent 7 logs: ${stats.cardioMinutesLast7}
 - Cardio distance in recent 7 logs: ${stats.cardioDistanceLast7Label}
-- Today food intake: ${getDailyFoodCalories(draft) || '—'} kcal
-- Nutrition tag summary: ${nutritionTags.summary}
 
 Top exercise progression:
 ${JSON.stringify(exerciseDashboard.progression.slice(0, 8), null, 2)}
@@ -4694,9 +4715,10 @@ Give me:
 3. Which exercises improved, matched best, dropped, or lack enough data
 4. Whether today fits the intended weekly Upper/Lower/Rest structure
 5. What the scale/cardio trend means without overreacting
-6. What food/protein signal is missing
-7. What to do in the next workout
-8. One hard truth I may be avoiding`
+6. Whether food intake looks complete enough to judge the day
+7. What protein signal is visible from the actual food item names, without pretending certainty
+8. What to do in the next workout
+9. One hard truth I may be avoiding`
 }
 
 export {
