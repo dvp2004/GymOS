@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { ChangeEvent, FormEvent, PointerEvent } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from './lib/supabase'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import './App.css'
 
 const EXISTING_CHATGPT_COACH_URL = import.meta.env.VITE_EXISTING_CHATGPT_COACH_URL ?? ''
@@ -2135,6 +2136,7 @@ function App() {
         )}
       </section>
 
+      <SpeedInsights />
       <BottomDock activeTab={activeTab} setActiveTab={setActiveTab} />
     </main>
   )
