@@ -2398,7 +2398,10 @@ function TodayView({
   const totalCalories = getTotalCaloriesBurned(draft)
   const todayMeals = getDisplayMeals(draft)
   const foodCalories = getDailyFoodCalories({ meals: todayMeals })  
-  const plannedWorkout = hasWorkoutData(draft) ? draft.workoutType === 'Custom' ? getDefaultWorkoutTypeForDate(draft.date) : draft.workoutType : getDefaultWorkoutTypeForDate(draft.date)
+  const plannedWorkout =
+    draft.workoutType === 'Custom' || draft.workoutType === 'Mix' || draft.workoutType === 'Cardio' || draft.workoutType === 'Recovery'
+      ? getDefaultWorkoutTypeForDate(draft.date)
+      : draft.workoutType
 
   return (
     <div className="today-layout">
@@ -2464,11 +2467,7 @@ function TodayView({
           <label>
             Today’s plan
             <select
-              value={
-                plannedWorkout === 'Upper' || plannedWorkout === 'Lower' || plannedWorkout === 'Rest'
-                  ? plannedWorkout
-                  : getDefaultWorkoutTypeForDate(draft.date)
-              }
+              value={plannedWorkout}
               onChange={(event) => updateDraft('workoutType', event.target.value as WorkoutType)}
             >
               <option value="Upper">Upper</option>
