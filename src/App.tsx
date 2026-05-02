@@ -1493,6 +1493,16 @@ function mapCloudRowsToLogs(rows: DailyLogRow[], exerciseRows: ExerciseRow[], me
   })
 }
 
+function chunkArray<T>(items: T[], chunkSize: number) {
+  const chunks: T[][] = []
+
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize))
+  }
+
+  return chunks
+}
+
 async function fetchRelatedRows<T>(
   client: NonNullable<typeof supabase>,
   tableName: 'exercise_entries' | 'meal_entries',
@@ -1500,29 +1510,22 @@ async function fetchRelatedRows<T>(
 ) {
   if (!dailyLogIds.length) return [] as T[]
 
-  const pageSize = 1000
-  let from = 0
   const allRows: T[] = []
 
-  while (true) {
-    const to = from + pageSize - 1
+  // Keep this conservative. 50 daily logs × 5 meals or ~10 exercises stays safely under common limits.
+  const idChunks = chunkArray(dailyLogIds, 50)
 
+  for (const ids of idChunks) {
     const { data, error } = await client
       .from(tableName)
       .select('*')
-      .in('daily_log_id', dailyLogIds)
+      .in('daily_log_id', ids)
       .order('daily_log_id', { ascending: true })
       .order('position', { ascending: true })
-      .range(from, to)
 
     if (error) throw error
 
-    const rows = (data ?? []) as T[]
-    allRows.push(...rows)
-
-    if (rows.length < pageSize) break
-
-    from += pageSize
+    allRows.push(...((data ?? []) as T[]))
   }
 
   return allRows
@@ -1549,6 +1552,16 @@ async function fetchCloudLogs(userId: string) {
     fetchRelatedRows<ExerciseRow>(client, 'exercise_entries', ids),
     fetchRelatedRows<MealRow>(client, 'meal_entries', ids),
   ])
+
+  console.log('Cloud fetch counts', {
+    dailyLogs: rows.length,
+    exerciseRows: exerciseRows.length,
+    mealRows: mealRows.length,
+    mealsForApr29: mealRows.filter((meal) => {
+      const dailyLog = rows.find((row) => row.id === meal.daily_log_id)
+      return dailyLog?.log_date === '2026-04-29'
+    }),
+  })
 
   return sortLogs(mapCloudRowsToLogs(rows, exerciseRows, mealRows))
 }
