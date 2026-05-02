@@ -282,7 +282,7 @@ function ensureDefaultMeals(meals: MealEntry[]) {
   }
 
   const defaultMeals = DEFAULT_MEAL_ORDER.map((label) => {
-    return existingByLabel.get(label) ?? makeMeal(label)
+    return existingByLabel.get(label) ?? makeDefaultMeal(label)
   })
 
   const extraMeals = normalisedMeals.filter((meal) => !DEFAULT_MEAL_ORDER.includes(meal.label))
@@ -371,6 +371,13 @@ function makeMeal(label: MealEntry['label'], description = ''): MealEntry {
     proteinScore: 1,
     tags: [],
     items: [],
+  }
+}
+
+function makeDefaultMeal(label: MealEntry['label']): MealEntry {
+  return {
+    ...makeMeal(label),
+    id: `default-${label.toLowerCase().replace(/\s+/g, '-')}`,
   }
 }
 
@@ -1994,11 +2001,14 @@ function App() {
 
   function updateMeal(id: string, patch: Partial<MealEntry>) {
     const currentMeals = ensureDefaultMeals(draft.meals)
-    const exists = currentMeals.some((meal) => meal.id === id)
 
-    const nextMeals = exists
-      ? currentMeals.map((meal) => (meal.id === id ? { ...meal, ...patch } : meal))
-      : [...currentMeals, { ...makeMeal('Other'), id, ...patch }]
+    const nextMeals = currentMeals.map((meal) => {
+      if (meal.id === id) {
+        return { ...meal, ...patch }
+      }
+
+      return meal
+    })
 
     updateDraft('meals', nextMeals)
   }
