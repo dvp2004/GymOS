@@ -696,10 +696,9 @@ function classifyTrainingKind(exercises: ExerciseEntry[], hasCardio: boolean): T
   if (hasUpper) return 'upper'
   if (hasLower) return 'lower'
 
-  // Core is neutral. It should not turn an upper day into mixed.
-  if (hasCardio && !hasUpper && !hasLower) return 'cardio'
+  if (hasCardio) return 'cardio'
 
-  // If someone logs only core and no cardio, do not pretend it was Upper/Lower.
+  // Core-only should not become Lower or Mix.
   if (hasCore) return 'none'
 
   return 'none'

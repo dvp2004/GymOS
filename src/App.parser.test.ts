@@ -176,3 +176,23 @@ Machine Seated Row: 65lbs, 3, 12`)
     expect(parsed.cyclingCalories).toBe('240')
   })
 })
+
+it('keeps an upper workout as Upper when neutral core accessories are added', () => {
+  const parsed = parseRawWorkoutText(`Weight: - kgs
+Treadmill:
+B. 0.85km, 10:00, incline=6.0
+Machine Front lat-pulldown (Tricep, Bicep, Lats): 85lbs, 3, 12
+Machine Chest Press (Deltoids, Traps & Triceps): 45lbs, 3, 12
+Machine Shoulder Press (Deltoids, Traps & Triceps): 30lbs, 3, 12
+Machine Triceps Pushdown (Triceps): 25lbs, 3, 12
+Machine Seated Row (teres major): 65lbs, 3, 12
+Machine Bicep-curl: 25lbs, 3, 12
+Plank: , 3, 40 seconds
+Crunches: , 3, 12
+Forearm Pushups: , 3, 12
+Calories Burnt:
+Traditional Strength Training: 675 kcal
+Running: 148 kcal`)
+
+  expect(parsed.workoutType).toBe('Upper')
+})
