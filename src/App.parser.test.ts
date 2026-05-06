@@ -176,4 +176,3 @@ Machine Seated Row: 65lbs, 3, 12`)
     expect(parsed.cyclingCalories).toBe('240')
   })
 })
-

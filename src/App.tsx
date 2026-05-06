@@ -241,8 +241,12 @@ const LOWER_EXERCISE_CANONICALS = new Set([
   'leg-extension',
   'standing-calf-raise',
   'dumbbell-romanian-deadlift',
+])
+
+const CORE_EXERCISE_CANONICALS = new Set([
   'plank',
   'crunches',
+  'forearm-pushups',
 ])
 
 const UPPER_EXERCISE_CANONICALS = new Set([
@@ -678,20 +682,40 @@ function buildExerciseParseWarnings(exercise: ExerciseEntry, originalLine: strin
 function classifyTrainingKind(exercises: ExerciseEntry[], hasCardio: boolean): TrainingKind {
   let hasUpper = false
   let hasLower = false
+  let hasCore = false
 
   for (const exercise of exercises) {
     const canonical = canonicalExerciseName(exercise.name)
 
     if (UPPER_EXERCISE_CANONICALS.has(canonical)) hasUpper = true
     if (LOWER_EXERCISE_CANONICALS.has(canonical)) hasLower = true
+    if (CORE_EXERCISE_CANONICALS.has(canonical)) hasCore = true
   }
 
   if (hasUpper && hasLower) return 'mix'
   if (hasUpper) return 'upper'
   if (hasLower) return 'lower'
-  if (hasCardio && !exercises.length) return 'cardio'
+
+  // Core is neutral. It should not turn an upper day into mixed.
+  if (hasCardio && !hasUpper && !hasLower) return 'cardio'
+
+  // If someone logs only core and no cardio, do not pretend it was Upper/Lower.
+  if (hasCore) return 'none'
 
   return 'none'
+}
+
+function hasCardioActivity(log: Pick<
+  DailyLog,
+  'treadmillDistanceKm' | 'treadmillMinutes' | 'cardioCalories' | 'basketballCalories' | 'cyclingCalories'
+>) {
+  return Boolean(
+    safeNumber(log.treadmillDistanceKm) !== null ||
+      parseDurationToMinutes(log.treadmillMinutes) !== null ||
+      (safeNumber(log.cardioCalories) ?? 0) > 0 ||
+      (safeNumber(log.basketballCalories) ?? 0) > 0 ||
+      (safeNumber(log.cyclingCalories) ?? 0) > 0,
+  )
 }
 
 function trainingKindToWorkoutType(kind: TrainingKind): WorkoutType {
@@ -699,6 +723,34 @@ function trainingKindToWorkoutType(kind: TrainingKind): WorkoutType {
   if (kind === 'lower') return 'Lower'
   if (kind === 'mix') return 'Mix'
   if (kind === 'cardio') return 'Cardio'
+
+  return 'Rest'
+}
+
+function trainingKindFromWorkoutType(type: WorkoutType): TrainingKind {
+  if (type === 'Upper') return 'upper'
+  if (type === 'Lower') return 'lower'
+  if (type === 'Mix') return 'mix'
+  if (type === 'Cardio') return 'cardio'
+
+  return 'none'
+}
+
+function getEffectiveWorkoutType(log: DailyLog): WorkoutType {
+  const cardio = hasCardioActivity(log)
+  const inferredFromExercises = trainingKindToWorkoutType(classifyTrainingKind(log.exercises, cardio))
+
+  if (inferredFromExercises !== 'Rest') {
+    return inferredFromExercises
+  }
+
+  if (cardio) {
+    return 'Cardio'
+  }
+
+  if (log.workoutType === 'Upper' || log.workoutType === 'Lower' || log.workoutType === 'Mix' || log.workoutType === 'Cardio') {
+    return log.workoutType
+  }
 
   return 'Rest'
 }
@@ -1251,7 +1303,14 @@ function parseRawWorkoutText(raw: string): ParsedWorkoutText {
     }
   }
 
-  const hasCardio = Boolean(treadmillDistanceKm || treadmillMinutes)
+  const hasCardio = Boolean(
+    treadmillDistanceKm ||
+      treadmillMinutes ||
+      cardioCalories ||
+      basketballCalories ||
+      cyclingCalories,
+  )
+
   const workoutType = inferWorkoutTypeFromExercises(exercises, hasCardio)
 
   return {
@@ -3750,7 +3809,12 @@ function formatDateShort(date: string) {
 }
 
 function hasWorkoutData(log: DailyLog) {
-  return Boolean(log.exercises.length || log.treadmillDistanceKm || log.treadmillMinutes)
+  return Boolean(
+    log.exercises.length ||
+      safeNumber(log.treadmillDistanceKm) !== null ||
+      parseDurationToMinutes(log.treadmillMinutes) !== null ||
+      getTotalCaloriesBurned(log) > 0,
+  )
 }
 
 function getLastWorkout(logs: DailyLog[], beforeDate?: string) {
@@ -4067,15 +4131,15 @@ function buildConsistencyHeatmap(logs: DailyLog[]) {
 
     const iso = toInputDate(date)
     const log = logs.find((item) => item.date === iso)
-    const hasCardio = Boolean(log?.treadmillDistanceKm || log?.treadmillMinutes)
-    const kind = log ? classifyTrainingKind(log.exercises, hasCardio) : 'none'
+    const effectiveType = log ? getEffectiveWorkoutType(log) : 'Rest'
+    const kind = trainingKindFromWorkoutType(effectiveType)
 
     return {
       date: iso,
       weekday: date.toLocaleDateString('en-GB', { weekday: 'short' }),
       dayNumber: date.getDate(),
       kind,
-      type: trainingKindToWorkoutType(kind),
+      type: effectiveType,
       active: kind !== 'none',
     }
   })
@@ -4270,6 +4334,11 @@ const EXERCISE_ALIASES: Array<{
     canonical: 'crunches',
     display: 'Crunches',
     patterns: [/^crunch(es)?$/i, /^ab\s*crunch(es)?$/i],
+  },
+  {
+    canonical: 'forearm-pushups',
+    display: 'Forearm pushups',
+    patterns: [/^forearm\s*push[\s-]?ups?$/i, /^forearm\s*push[\s-]?up$/i],
   },
 ]
 
