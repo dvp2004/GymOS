@@ -6,6 +6,7 @@ import { isSupabaseConfigured, supabase, supabaseAnonKey, supabaseUrl } from './
 import './App.css'
 
 const EXISTING_CHATGPT_COACH_URL = import.meta.env.VITE_EXISTING_CHATGPT_COACH_URL ?? ''
+const PROGRESSION_BOARD_LIMIT = 8
 
 type Tab = 'today' | 'workout' | 'nutrition' | 'trends' | 'coach'
 type WorkoutType = 'Upper' | 'Lower' | 'Mix' | 'Cardio' | 'Recovery' | 'Rest' | 'Custom'
@@ -3450,18 +3451,20 @@ function TrendsView({
             <p className="eyebrow">Progressive overload</p>
             <h3>Exercise progression board</h3>
           </div>
-          <span className="status-pill">{exerciseDashboard.progression.length} tracked</span>
+          <span className="status-pill">
+            Top {Math.min(PROGRESSION_BOARD_LIMIT, exerciseDashboard.progression.length)}/{exerciseDashboard.progression.length}
+          </span>
         </div>
 
         <div className="progression-grid">
           {exerciseDashboard.progression.length === 0 && (
             <div className="empty-state">Add a few more repeated exercise logs and this will show load, reps and session progress.</div>
           )}
-          {exerciseDashboard.progression.slice(0, 8).map((item) => (
+          {exerciseDashboard.progression.slice(0, PROGRESSION_BOARD_LIMIT).map((item, index) => (
             <article className="progress-card" key={item.name}>
               <div>
-                <strong>{item.name}</strong>
-                <span>{item.sessions} sessions logged</span>
+                <strong>#{index + 1} · {item.name}</strong>
+                <span>{item.sessions} sessions logged · latest {formatDateShort(item.latestDate)}</span>
               </div>
               <div className="progress-values">
                 <span>First: {item.firstLabel}</span>
@@ -3472,6 +3475,9 @@ function TrendsView({
             </article>
           ))}
         </div>
+        <p className="helper-copy tight">
+          Board is auto-ranked by most logged repeated exercises, then most recent use, then best performance. It is not manually selected.
+        </p>
       </section>
 
       <section className="panel span-2">
@@ -4514,10 +4520,13 @@ function buildExerciseDashboard(logs: DailyLog[]) {
         name: displayExerciseName(name),
         canonicalName: name,
         sessions: entries.length,
+        firstDate: first.date,
+        latestDate: latest.date,
+        bestDate: best?.date ?? null,
+        bestScore: best?.score ?? null,
         firstLabel: formatExerciseEntry(first.exercise),
         latestLabel: formatExerciseEntry(latest.exercise),
         bestLabel: best ? formatExerciseEntry(best.exercise) : '—',
-        bestDate: best?.date ?? null,
         deltaLabel:
           delta === null
             ? 'Track load consistently to see direction.'
@@ -4528,7 +4537,14 @@ function buildExerciseDashboard(logs: DailyLog[]) {
                 : 'Load is flat; look for rep quality, form, or consistency improvements.',
       }
     })
-    .sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name))
+    .sort((a, b) => {
+      if (b.sessions !== a.sessions) return b.sessions - a.sessions
+      if (b.latestDate !== a.latestDate) return b.latestDate.localeCompare(a.latestDate)
+      if ((b.bestScore ?? -Infinity) !== (a.bestScore ?? -Infinity)) {
+        return (b.bestScore ?? -Infinity) - (a.bestScore ?? -Infinity)
+      }
+      return a.name.localeCompare(b.name)
+    })
 
   const volumeLeaders = [...byExercise.entries()]
     .map(([name, entries]) => ({
